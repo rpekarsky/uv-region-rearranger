@@ -31,6 +31,23 @@ jobs:
 
       - run: npm run build
 
+      - name: Inject analytics
+        env:
+          ANALYTICS_SCRIPT: ${{ vars.ANALYTICS_SCRIPT }}
+        run: |
+          node <<'EOF'
+          const fs = require('fs');
+          const script = process.env.ANALYTICS_SCRIPT || '';
+          if (!script) {
+            console.log('ANALYTICS_SCRIPT not set, skipping');
+            process.exit(0);
+          }
+          const path = 'dist/index.html';
+          const content = fs.readFileSync(path, 'utf8');
+          fs.writeFileSync(path, content.replace('<!-- analytics -->', script));
+          console.log('Analytics injected');
+          EOF
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

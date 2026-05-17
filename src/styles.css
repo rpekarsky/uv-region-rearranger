@@ -215,10 +215,8 @@ input[type='checkbox']:focus-visible {
   overflow: hidden;
   background: var(--c-track);
 }
-@media (max-width: 1200px) {
-  .zones {
-    flex-direction: column;
-  }
+.zones.vertical {
+  flex-direction: column;
 }
 
 .zone-slot {

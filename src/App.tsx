@@ -120,7 +120,7 @@ export function App() {
     <div className="app">
       <KeyboardShortcuts />
       <main className="workspace">
-        <div className="zones" ref={zonesRef}>
+        <div className={`zones ${vertical ? 'vertical' : ''}`} ref={zonesRef}>
           <div className="zone-slot" style={leftStyle}>
             <CanvasZone side="left" />
           </div>
@@ -128,7 +128,13 @@ export function App() {
             containerRef={zonesRef}
             setRatio={setZonesRatio}
             vertical={vertical}
-            onDoubleClick={() => setZonesRatio(0.5)}
+            onDoubleClick={() => {
+              if (Math.abs(zonesRatio - 0.5) > 0.001) {
+                setZonesRatio(0.5);
+              } else {
+                setVertical((v) => !v);
+              }
+            }}
           />
           <div className="zone-slot" style={rightStyle}>
             <CanvasZone side="right" />

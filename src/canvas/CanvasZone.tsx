@@ -452,7 +452,13 @@ export function CanvasZone({ side }: Props) {
       return;
     }
     const space = side === 'left' ? 'source' : 'transformed';
-    const canvas = renderRegionMap(params.regions, params.bgFill, size, space);
+    const canvas = renderRegionMap(
+      params.regions,
+      params.bgFill,
+      size,
+      space,
+      params.showRegionNames,
+    );
     const suffix = side === 'left' ? 'original.region-map' : 'region-map';
     downloadCanvas(canvas, `${baseName}.${suffix}.png`);
     toast.success(`Downloaded ${baseName}.${suffix}.png`);

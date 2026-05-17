@@ -130,44 +130,61 @@ export function renderInverse(
 // Reference render: each region painted as a filled+bordered shape with its
 // name in the center, in either source or transformed space at `outputSize`.
 // Useful to feed an AI tool a layout reference.
+// Region maps are schematics, not full-res renders — only relative geometry
+// and labels matter. Cap to 1024px on the longer side; preserve aspect ratio;
+// never upscale. Stroke is 1 device pixel, labels render at a fixed 8px font.
+const REGION_MAP_MAX_SIDE = 1024;
+const REGION_MAP_LABEL_PX = 8;
+// drawRegionLabel scales a 13px baseline by pxScale internally — back out the
+// scale we need to land on REGION_MAP_LABEL_PX exactly.
+const REGION_MAP_LABEL_SCALE = REGION_MAP_LABEL_PX / 13;
+
 export function renderRegionMap(
   regions: readonly Region[],
   bgFill: BgFill,
-  outputSize: [number, number],
-  space: 'source' | 'transformed' = 'transformed',
+  referenceSize: [number, number],
+  space: 'source' | 'transformed',
+  showLabels: boolean,
 ): HTMLCanvasElement {
-  const [w, h] = outputSize;
+  const [refW, refH] = referenceSize;
+  const scale = Math.min(REGION_MAP_MAX_SIDE / refW, REGION_MAP_MAX_SIDE / refH, 1);
+  const w = Math.max(1, Math.round(refW * scale));
+  const h = Math.max(1, Math.round(refH * scale));
+
   const out = document.createElement('canvas');
   out.width = w;
   out.height = h;
   const ctx = out.getContext('2d')!;
+  // No-op for paths/text (browsers AA those unconditionally), but flips off
+  // smoothing for any incidental raster ops that might land here later.
+  ctx.imageSmoothingEnabled = false;
   fillBg(ctx, w, h, bgFill);
-
-  // The shared label helper is sized via pxScale (= 1/viewport.scale on screen).
-  // For a static export there's no viewport — pick a scale so labels read at
-  // the same relative size on any output dimension.
-  const pxScale = Math.min(w, h) / 600;
-  const lineWidth = 3 * pxScale;
 
   regions.forEach((region, idx) => {
     const color = regionColor(idx);
-    const poly =
+    const srcPoly =
       space === 'transformed'
         ? applyPolygon(buildRegionMatrix(region.transform), region.polygon)
         : region.polygon;
-    if (poly.length < 3) return;
+    if (srcPoly.length < 3) return;
+
+    // Scale polygon coords manually (rather than via ctx.scale) so lineWidth=1
+    // means exactly 1 device pixel in the output, not 1/scale pixels.
+    const poly: Polygon = srcPoly.map(([x, y]) => [x * scale, y * scale]);
 
     ctx.save();
     ctx.fillStyle = hexWithAlpha(color, 0.45);
     ctx.strokeStyle = color;
-    ctx.lineWidth = lineWidth;
+    ctx.lineWidth = 1;
     ctx.lineJoin = 'round';
     pathPolygon(ctx, poly);
     ctx.fill();
     ctx.stroke();
     ctx.restore();
 
-    drawRegionLabel(ctx, poly, region.name, pxScale, '#fff');
+    if (showLabels) {
+      drawRegionLabel(ctx, poly, region.name, REGION_MAP_LABEL_SCALE, '#fff');
+    }
   });
 
   return out;

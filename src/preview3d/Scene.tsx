@@ -2,9 +2,18 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import { OrbitControls, Bounds, useBounds } from '@react-three/drei';
 import { useShallow } from 'zustand/react/shallow';
-import { Box3, Vector3, Group } from 'three';
+import {
+  Box3,
+  Vector3,
+  Group,
+  Texture,
+  MeshBasicMaterial,
+  SRGBColorSpace,
+  LinearFilter,
+} from 'three';
 import { useEditorStore } from '../store';
 import type { LoadedModel } from './types';
+import { useTextureCanvas } from './useTextureCanvas';
 
 function ModelMount({ model }: { model: LoadedModel }) {
   const meshVisibility = useEditorStore((s) => s.meshVisibility);
@@ -23,8 +32,6 @@ function ModelMount({ model }: { model: LoadedModel }) {
 function AutoFit({ model }: { model: LoadedModel }) {
   const bounds = useBounds();
   useEffect(() => {
-    // Recompute the model bbox after meshes mount; drei <Bounds> + .refresh().fit()
-    // is the idiomatic way to frame arbitrary scene content.
     const box = new Box3().setFromObject(model.root);
     if (box.isEmpty()) return;
     const size = new Vector3();
@@ -32,6 +39,78 @@ function AutoFit({ model }: { model: LoadedModel }) {
     if (size.length() === 0) return;
     bounds.refresh().clip().fit();
   }, [model, bounds]);
+  return null;
+}
+
+function TextureBinder({ model }: { model: LoadedModel }) {
+  const selectedMaterialIds = useEditorStore((s) => s.selectedMaterialIds);
+  const flipY = useEditorStore((s) => s.texture3DFlipY);
+  const { source, key: sourceKey } = useTextureCanvas();
+  const { gl } = useThree();
+  // Kept for completeness in case we re-enable mipmaps later; without them
+  // anisotropy is a no-op on the GPU.
+  void gl;
+  const textureRef = useRef<Texture | null>(null);
+  const materialRef = useRef<MeshBasicMaterial | null>(null);
+  const prevBoundRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    const prev = prevBoundRef.current;
+    // Restore placeholders for slots no longer in selection.
+    for (const slot of prev) {
+      if (!selectedMaterialIds.includes(slot)) {
+        const placeholder = model.placeholderMaterials.get(slot);
+        const meshes = model.meshesByMaterial.get(slot);
+        if (placeholder && meshes) for (const m of meshes) m.material = placeholder;
+      }
+    }
+
+    if (selectedMaterialIds.length === 0 || !source) {
+      prevBoundRef.current = [...selectedMaterialIds];
+      return;
+    }
+
+    if (!textureRef.current || textureRef.current.image !== source) {
+      textureRef.current?.dispose();
+      const tex = new Texture(source);
+      tex.flipY = flipY;
+      tex.colorSpace = SRGBColorSpace;
+      tex.minFilter = LinearFilter;
+      tex.magFilter = LinearFilter;
+      tex.generateMipmaps = false;
+      tex.needsUpdate = true;
+      textureRef.current = tex;
+      if (materialRef.current) {
+        materialRef.current.map = tex;
+        materialRef.current.needsUpdate = true;
+      }
+    } else {
+      const tex = textureRef.current;
+      if (tex.flipY !== flipY) tex.flipY = flipY;
+      tex.needsUpdate = true;
+    }
+
+    if (!materialRef.current) {
+      materialRef.current = new MeshBasicMaterial({ map: textureRef.current });
+    }
+
+    for (const slot of selectedMaterialIds) {
+      const meshes = model.meshesByMaterial.get(slot);
+      if (meshes) for (const m of meshes) m.material = materialRef.current;
+    }
+
+    prevBoundRef.current = [...selectedMaterialIds];
+  }, [model, selectedMaterialIds, source, sourceKey, flipY]);
+
+  useEffect(() => {
+    return () => {
+      textureRef.current?.dispose();
+      materialRef.current?.dispose();
+      textureRef.current = null;
+      materialRef.current = null;
+    };
+  }, [model]);
+
   return null;
 }
 
@@ -54,6 +133,7 @@ export function Scene() {
         <Bounds key={key} margin={1.2}>
           <ModelMount model={model3d} />
           <AutoFit model={model3d} />
+          <TextureBinder model={model3d} />
         </Bounds>
       )}
       <OrbitControls makeDefault enableDamping dampingFactor={0.1} />

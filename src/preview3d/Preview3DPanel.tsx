@@ -20,8 +20,8 @@ export function Preview3DPanel() {
     }
     setLoading(true);
     try {
-      const model = await loadGLB(file);
-      setModel3D(model);
+      const model = await loadGLB(file, file.name);
+      setModel3D(model, file);
       toast.success(`Loaded ${file.name} (${model.materialNames.length} material slots)`);
     } catch (err) {
       toast.error('Failed to load model: ' + (err as Error).message);

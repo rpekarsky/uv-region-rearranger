@@ -81,12 +81,13 @@ export function renderInverse(
   bgFill: BgFill,
   regionsOnly = false,
   sourceSize?: [number, number] | null,
+  target?: HTMLCanvasElement,
 ): HTMLCanvasElement {
   const w = sourceSize?.[0] ?? aiImage.naturalWidth ?? aiImage.width;
   const h = sourceSize?.[1] ?? aiImage.naturalHeight ?? aiImage.height;
-  const out = document.createElement('canvas');
-  out.width = w;
-  out.height = h;
+  const out = target ?? document.createElement('canvas');
+  if (out.width !== w) out.width = w;
+  if (out.height !== h) out.height = h;
   const ctx = out.getContext('2d')!;
 
   // Always paint bg first so areas outside the output canvas footprint (when

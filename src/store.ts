@@ -15,6 +15,7 @@ import { bbox, centroid } from './geometry/polygon';
 import { cacheImage, clearCachedImage } from './io/imageCache';
 import { applyPoint, buildRegionMatrix, compensateSourceScale } from './geometry/transform';
 import type { LoadedModel } from './preview3d/types';
+import { cacheModel, clearCachedModel } from './preview3d/modelCache';
 
 const IDENTITY_VIEWPORT: Viewport = { scale: 1, panX: 0, panY: 0 };
 
@@ -77,8 +78,11 @@ export interface EditorStore {
 
   // 3D model — NOT partialized into history/persistence; THREE objects.
   model3d: LoadedModel | null;
-  selectedMaterialId: string | null;
+  selectedMaterialIds: string[];
   meshVisibility: Record<string, boolean>;
+  // Texture Y-flip — GLB convention says no, but some authoring tools (Blender
+  // baking, custom exports) end up needing the flip. User-toggleable in UI.
+  texture3DFlipY: boolean;
 
   // The image dimensions that current region/mask polygon coords are normalized
   // against. Set by loadConfig (from cfg.imageSize) and by image-set actions.
@@ -137,10 +141,11 @@ export interface EditorStore {
   setRightVertexEditUnlocked: (v: boolean) => void;
   setZonesRatio: (v: number) => void;
   setOriginalSplitRatio: (v: number) => void;
-  setModel3D: (model: LoadedModel | null) => void;
-  setSelectedMaterialId: (id: string | null) => void;
+  setModel3D: (model: LoadedModel | null, blob?: Blob | null) => void;
+  setSelectedMaterialIds: (ids: string[]) => void;
   setMeshVisibility: (name: string, visible: boolean) => void;
   setAllMeshesVisible: (visible: boolean) => void;
+  setTexture3DFlipY: (v: boolean) => void;
   setOutputCanvasSize: (size: [number, number] | null, stretch?: boolean) => void;
   setSourceCanvasSize: (size: [number, number], stretch: boolean) => void;
   loadConfig: (cfg: SerializedConfig) => void;
@@ -279,8 +284,9 @@ export const useEditorStore = create<EditorStore>()(
       zonesRatio: 0.5,
       originalSplitRatio: 0.7,
       model3d: null,
-      selectedMaterialId: null,
+      selectedMaterialIds: [],
       meshVisibility: {},
+      texture3DFlipY: false,
       regionImageSize: null,
       outputCanvasSize: null,
       originalCanvasSize: null,
@@ -569,24 +575,28 @@ export const useEditorStore = create<EditorStore>()(
       setZonesRatio: (v) => set({ zonesRatio: Math.max(0.02, Math.min(0.98, v)) }),
       setOriginalSplitRatio: (v) =>
         set({ originalSplitRatio: Math.max(0.05, Math.min(0.95, v)) }),
-      setModel3D: (model) =>
+      setModel3D: (model, blob) => {
         set((s) => {
-          if (!model) return { model3d: null, selectedMaterialId: null, meshVisibility: {} };
+          if (!model) return { model3d: null, selectedMaterialIds: [], meshVisibility: {} };
           const visibility: Record<string, boolean> = {};
           for (const name of model.meshNames) visibility[name] = true;
+          const validExisting = s.selectedMaterialIds.filter((n) =>
+            model.materialNames.includes(n),
+          );
           const autoPick =
             model.materialNames.find((n) => /car_paint(?!_at)/i.test(n)) ??
-            model.materialNames[0] ??
-            null;
-          return {
-            model3d: model,
-            meshVisibility: visibility,
-            selectedMaterialId: s.selectedMaterialId ?? autoPick,
-          };
-        }),
-      setSelectedMaterialId: (id) => set({ selectedMaterialId: id }),
+            model.materialNames[0];
+          const selectedMaterialIds =
+            validExisting.length > 0 ? validExisting : autoPick ? [autoPick] : [];
+          return { model3d: model, meshVisibility: visibility, selectedMaterialIds };
+        });
+        if (model && blob) void cacheModel(blob, model.filename);
+        else if (!model) void clearCachedModel();
+      },
+      setSelectedMaterialIds: (ids) => set({ selectedMaterialIds: ids }),
       setMeshVisibility: (name, visible) =>
         set((s) => ({ meshVisibility: { ...s.meshVisibility, [name]: visible } })),
+      setTexture3DFlipY: (v) => set({ texture3DFlipY: v }),
       setAllMeshesVisible: (visible) =>
         set((s) => {
           if (!s.model3d) return s;

@@ -4,19 +4,23 @@ import { useEditorStore } from '../store';
 export function Model3DSection() {
   const {
     model3d,
-    selectedMaterialId,
-    setSelectedMaterialId,
+    selectedMaterialIds,
+    setSelectedMaterialIds,
     meshVisibility,
     setMeshVisibility,
     setAllMeshesVisible,
+    texture3DFlipY,
+    setTexture3DFlipY,
   } = useEditorStore(
     useShallow((s) => ({
       model3d: s.model3d,
-      selectedMaterialId: s.selectedMaterialId,
-      setSelectedMaterialId: s.setSelectedMaterialId,
+      selectedMaterialIds: s.selectedMaterialIds,
+      setSelectedMaterialIds: s.setSelectedMaterialIds,
       meshVisibility: s.meshVisibility,
       setMeshVisibility: s.setMeshVisibility,
       setAllMeshesVisible: s.setAllMeshesVisible,
+      texture3DFlipY: s.texture3DFlipY,
+      setTexture3DFlipY: s.setTexture3DFlipY,
     })),
   );
 
@@ -30,19 +34,49 @@ export function Model3DSection() {
     <div className="model3d-section">
       <div className="model3d-filename">{model3d.filename}</div>
 
-      <div className="model3d-subhead">Skin material</div>
-      <select
-        className="model3d-material-select"
-        value={selectedMaterialId ?? ''}
-        onChange={(e) => setSelectedMaterialId(e.target.value || null)}
-      >
-        <option value="">— none —</option>
-        {model3d.materialNames.map((name) => (
-          <option key={name} value={name}>
-            {name} ({model3d.meshesByMaterial.get(name)?.length ?? 0} meshes)
-          </option>
-        ))}
-      </select>
+      <label className="bg-checkbox">
+        <input
+          type="checkbox"
+          checked={texture3DFlipY}
+          onChange={(e) => setTexture3DFlipY(e.target.checked)}
+        />
+        flip texture Y
+      </label>
+
+      <div className="model3d-subhead">Skin materials</div>
+      {[...selectedMaterialIds, null].map((id, idx) => {
+        const handleChange = (next: string | null) => {
+          if (idx < selectedMaterialIds.length) {
+            if (next === null) {
+              setSelectedMaterialIds(selectedMaterialIds.filter((_, i) => i !== idx));
+            } else {
+              setSelectedMaterialIds(
+                selectedMaterialIds.map((existing, i) => (i === idx ? next : existing)),
+              );
+            }
+          } else if (next !== null) {
+            setSelectedMaterialIds([...selectedMaterialIds, next]);
+          }
+        };
+        const available = model3d.materialNames.filter(
+          (n) => n === id || !selectedMaterialIds.includes(n),
+        );
+        return (
+          <select
+            key={idx}
+            className="model3d-material-select"
+            value={id ?? ''}
+            onChange={(e) => handleChange(e.target.value || null)}
+          >
+            <option value="">— none —</option>
+            {available.map((name) => (
+              <option key={name} value={name}>
+                {name} ({model3d.meshesByMaterial.get(name)?.length ?? 0} meshes)
+              </option>
+            ))}
+          </select>
+        );
+      })}
 
       <div className="model3d-subhead">
         Meshes ({model3d.meshNames.length})

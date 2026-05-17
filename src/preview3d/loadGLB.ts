@@ -7,8 +7,8 @@ function placeholderColor(index: number, total: number): Color {
   return new Color().setHSL(hue / 360, 0.25, 0.55);
 }
 
-export async function loadGLB(file: File): Promise<LoadedModel> {
-  const buffer = await file.arrayBuffer();
+export async function loadGLB(blob: Blob, filename: string): Promise<LoadedModel> {
+  const buffer = await blob.arrayBuffer();
   const loader = new GLTFLoader();
   const gltf = await loader.parseAsync(buffer, '');
   const root = gltf.scene;
@@ -29,6 +29,7 @@ export async function loadGLB(file: File): Promise<LoadedModel> {
   });
 
   const materialNames = Array.from(meshesByMaterial.keys());
+  const placeholderMaterials = new Map<string, MeshStandardMaterial>();
   materialNames.forEach((name, idx) => {
     const placeholder = new MeshStandardMaterial({
       color: placeholderColor(idx, materialNames.length),
@@ -36,9 +37,17 @@ export async function loadGLB(file: File): Promise<LoadedModel> {
       roughness: 0.7,
       name,
     });
+    placeholderMaterials.set(name, placeholder);
     const meshes = meshesByMaterial.get(name)!;
     for (const m of meshes) m.material = placeholder;
   });
 
-  return { root, meshesByMaterial, materialNames, meshNames, filename: file.name };
+  return {
+    root,
+    meshesByMaterial,
+    placeholderMaterials,
+    materialNames,
+    meshNames,
+    filename,
+  };
 }

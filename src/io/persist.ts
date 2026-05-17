@@ -70,6 +70,7 @@ interface UIPrefs {
   loupeAlwaysOn: boolean;
   showRegionNames: boolean;
   sidebarOpen: boolean;
+  texture3DFlipY: boolean;
 }
 
 let uiSaveTimer: number | null = null;
@@ -88,6 +89,7 @@ function scheduleUISave(): void {
       loupeAlwaysOn: s.loupeAlwaysOn,
       showRegionNames: s.showRegionNames,
       sidebarOpen: s.sidebarOpen,
+      texture3DFlipY: s.texture3DFlipY,
     };
     try {
       localStorage.setItem(UI_STORAGE_KEY, JSON.stringify(prefs));
@@ -107,7 +109,8 @@ export function setupUIPersistence(): () => void {
       state.regionsOnlyView !== prev.regionsOnlyView ||
       state.loupeAlwaysOn !== prev.loupeAlwaysOn ||
       state.showRegionNames !== prev.showRegionNames ||
-      state.sidebarOpen !== prev.sidebarOpen
+      state.sidebarOpen !== prev.sidebarOpen ||
+      state.texture3DFlipY !== prev.texture3DFlipY
     ) {
       scheduleUISave();
     }
@@ -129,6 +132,7 @@ export function restoreUIPersistence(): void {
     if (typeof prefs.loupeAlwaysOn === 'boolean') store.setLoupeAlwaysOn(prefs.loupeAlwaysOn);
     if (typeof prefs.showRegionNames === 'boolean') store.setShowRegionNames(prefs.showRegionNames);
     if (typeof prefs.sidebarOpen === 'boolean') store.setSidebarOpen(prefs.sidebarOpen);
+    if (typeof prefs.texture3DFlipY === 'boolean') store.setTexture3DFlipY(prefs.texture3DFlipY);
   } catch (err) {
     console.warn('[persist] Failed to restore UI prefs, clearing:', err);
     localStorage.removeItem(UI_STORAGE_KEY);

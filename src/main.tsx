@@ -8,6 +8,8 @@ import {
   setupUIPersistence,
 } from './io/persist';
 import { readCachedImage } from './io/imageCache';
+import { readCachedModel } from './preview3d/modelCache';
+import { loadGLB } from './preview3d/loadGLB';
 import { loadImageFromBlob } from './io/storage';
 import { loadDemo } from './io/demo';
 import { useEditorStore } from './store';
@@ -53,6 +55,16 @@ if (isDemo) {
         useEditorStore.getState().setTransformedImage(img, trans.filename);
       } catch (err) {
         console.warn('[imageCache] failed to decode transformed:', err);
+      }
+    }
+    const cachedModel = await readCachedModel();
+    if (cachedModel) {
+      try {
+        const model = await loadGLB(cachedModel.blob, cachedModel.filename);
+        // Pass undefined for blob — avoid re-writing the same bytes to IDB.
+        useEditorStore.getState().setModel3D(model);
+      } catch (err) {
+        console.warn('[modelCache] failed to decode model:', err);
       }
     }
   })();

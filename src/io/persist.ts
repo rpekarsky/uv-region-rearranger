@@ -65,6 +65,7 @@ interface UIPrefs {
   leftViewport: Viewport;
   rightViewport: Viewport;
   zonesRatio: number;
+  originalSplitRatio: number;
   regionsOnlyView: boolean;
   loupeAlwaysOn: boolean;
   showRegionNames: boolean;
@@ -82,6 +83,7 @@ function scheduleUISave(): void {
       leftViewport: s.leftViewport,
       rightViewport: s.rightViewport,
       zonesRatio: s.zonesRatio,
+      originalSplitRatio: s.originalSplitRatio,
       regionsOnlyView: s.regionsOnlyView,
       loupeAlwaysOn: s.loupeAlwaysOn,
       showRegionNames: s.showRegionNames,
@@ -101,6 +103,7 @@ export function setupUIPersistence(): () => void {
       state.leftViewport !== prev.leftViewport ||
       state.rightViewport !== prev.rightViewport ||
       state.zonesRatio !== prev.zonesRatio ||
+      state.originalSplitRatio !== prev.originalSplitRatio ||
       state.regionsOnlyView !== prev.regionsOnlyView ||
       state.loupeAlwaysOn !== prev.loupeAlwaysOn ||
       state.showRegionNames !== prev.showRegionNames ||
@@ -120,6 +123,8 @@ export function restoreUIPersistence(): void {
     if (prefs.leftViewport) store.setLeftViewport(prefs.leftViewport);
     if (prefs.rightViewport) store.setRightViewport(prefs.rightViewport);
     if (typeof prefs.zonesRatio === 'number') store.setZonesRatio(prefs.zonesRatio);
+    if (typeof prefs.originalSplitRatio === 'number')
+      store.setOriginalSplitRatio(prefs.originalSplitRatio);
     if (typeof prefs.regionsOnlyView === 'boolean') store.setRegionsOnlyView(prefs.regionsOnlyView);
     if (typeof prefs.loupeAlwaysOn === 'boolean') store.setLoupeAlwaysOn(prefs.loupeAlwaysOn);
     if (typeof prefs.showRegionNames === 'boolean') store.setShowRegionNames(prefs.showRegionNames);

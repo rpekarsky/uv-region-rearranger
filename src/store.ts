@@ -14,6 +14,7 @@ import type {
 import { bbox, centroid } from './geometry/polygon';
 import { cacheImage, clearCachedImage } from './io/imageCache';
 import { applyPoint, buildRegionMatrix, compensateSourceScale } from './geometry/transform';
+import type { LoadedModel } from './preview3d/types';
 
 const IDENTITY_VIEWPORT: Viewport = { scale: 1, panX: 0, panY: 0 };
 
@@ -71,6 +72,13 @@ export interface EditorStore {
 
   // Splitter ratio between left and right zones, 0..1 (left's share).
   zonesRatio: number;
+  // Splitter ratio inside the Original (source) zone, 0..1 (canvas's share).
+  originalSplitRatio: number;
+
+  // 3D model — NOT partialized into history/persistence; THREE objects.
+  model3d: LoadedModel | null;
+  selectedMaterialId: string | null;
+  meshVisibility: Record<string, boolean>;
 
   // The image dimensions that current region/mask polygon coords are normalized
   // against. Set by loadConfig (from cfg.imageSize) and by image-set actions.
@@ -128,6 +136,11 @@ export interface EditorStore {
   setSidebarOpen: (v: boolean) => void;
   setRightVertexEditUnlocked: (v: boolean) => void;
   setZonesRatio: (v: number) => void;
+  setOriginalSplitRatio: (v: number) => void;
+  setModel3D: (model: LoadedModel | null) => void;
+  setSelectedMaterialId: (id: string | null) => void;
+  setMeshVisibility: (name: string, visible: boolean) => void;
+  setAllMeshesVisible: (visible: boolean) => void;
   setOutputCanvasSize: (size: [number, number] | null, stretch?: boolean) => void;
   setSourceCanvasSize: (size: [number, number], stretch: boolean) => void;
   loadConfig: (cfg: SerializedConfig) => void;
@@ -264,6 +277,10 @@ export const useEditorStore = create<EditorStore>()(
       sidebarOpen: true,
       rightVertexEditUnlocked: false,
       zonesRatio: 0.5,
+      originalSplitRatio: 0.7,
+      model3d: null,
+      selectedMaterialId: null,
+      meshVisibility: {},
       regionImageSize: null,
       outputCanvasSize: null,
       originalCanvasSize: null,
@@ -550,6 +567,33 @@ export const useEditorStore = create<EditorStore>()(
       setSidebarOpen: (v) => set({ sidebarOpen: v }),
       setRightVertexEditUnlocked: (v) => set({ rightVertexEditUnlocked: v }),
       setZonesRatio: (v) => set({ zonesRatio: Math.max(0.02, Math.min(0.98, v)) }),
+      setOriginalSplitRatio: (v) =>
+        set({ originalSplitRatio: Math.max(0.05, Math.min(0.95, v)) }),
+      setModel3D: (model) =>
+        set((s) => {
+          if (!model) return { model3d: null, selectedMaterialId: null, meshVisibility: {} };
+          const visibility: Record<string, boolean> = {};
+          for (const name of model.meshNames) visibility[name] = true;
+          const autoPick =
+            model.materialNames.find((n) => /car_paint(?!_at)/i.test(n)) ??
+            model.materialNames[0] ??
+            null;
+          return {
+            model3d: model,
+            meshVisibility: visibility,
+            selectedMaterialId: s.selectedMaterialId ?? autoPick,
+          };
+        }),
+      setSelectedMaterialId: (id) => set({ selectedMaterialId: id }),
+      setMeshVisibility: (name, visible) =>
+        set((s) => ({ meshVisibility: { ...s.meshVisibility, [name]: visible } })),
+      setAllMeshesVisible: (visible) =>
+        set((s) => {
+          if (!s.model3d) return s;
+          const next: Record<string, boolean> = {};
+          for (const name of s.model3d.meshNames) next[name] = visible;
+          return { meshVisibility: next };
+        }),
       setOutputCanvasSize: (size, stretch = false) =>
         set((s) => {
           // "Effective" old/new sizes: null falls back to source size for ratio purposes.

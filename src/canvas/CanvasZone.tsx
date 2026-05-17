@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useResizeObserver } from 'usehooks-ts';
 import { toast } from 'sonner';
@@ -56,6 +56,7 @@ export function CanvasZone({ side }: Props) {
   const [backdropCanvas, setBackdropCanvas] = useState<HTMLCanvasElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
 
   const params = useEditorStore(
@@ -387,6 +388,32 @@ export function CanvasZone({ side }: Props) {
     side === 'left'
       ? (params.originalImage ?? params.transformedImage)
       : (params.transformedImage ?? params.originalImage);
+  // Image owned by THIS zone (no fallback to the other side) — drives the × clear button.
+  const sideImage = side === 'left' ? params.originalImage : params.transformedImage;
+
+  const handleLoadImage = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const img = await loadImageFromFile(file);
+      if (side === 'left') {
+        setOriginalImage(img, file.name, file);
+      } else {
+        setTransformedImage(img, file.name, file);
+      }
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+    e.target.value = '';
+  };
+
+  const handleClear = () => {
+    if (side === 'left') {
+      setOriginalImage(null, null);
+    } else {
+      setTransformedImage(null, null);
+    }
+  };
 
   const label = side === 'left' ? 'Original' : 'Transformed';
   const liveTag =
@@ -523,9 +550,35 @@ export function CanvasZone({ side }: Props) {
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <div className="zone-label">
-        <span className="zone-label-name">{label}</span>
-        {liveTag && <span className="zone-label-live">{liveTag}</span>}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={handleLoadImage}
+      />
+      <div className="zone-header">
+        <div className="zone-header-row">
+          <button
+            type="button"
+            className="zone-label-btn"
+            title={`Load ${label.toLowerCase()}`}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {label}
+          </button>
+          {sideImage && (
+            <button
+              type="button"
+              className="zone-label-clear"
+              title={`Clear ${label.toLowerCase()}`}
+              onClick={handleClear}
+            >
+              ×
+            </button>
+          )}
+        </div>
+        {liveTag && <div className="zone-label-live">{liveTag}</div>}
       </div>
       <button
         className="zone-download"

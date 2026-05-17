@@ -231,6 +231,44 @@ export function CanvasZone({ side }: Props) {
     containerSize.height,
   ]);
 
+  // ---- throttled backdrop refresh during drag ----
+  // The above effect bails when isDragging is true; the other zone would
+  // otherwise sit frozen until mouseup. Periodically redraw at a low rate
+  // so the user gets some live feedback in the opposing panel without
+  // paying for a heavy redraw per frame.
+  useEffect(() => {
+    if (!isDragging) return;
+    const canvas = backdropCanvas;
+    if (!canvas) return;
+    const DRAG_REFRESH_MS = 50;
+    const id = window.setInterval(() => {
+      const s = useEditorStore.getState();
+      if (side === 'left') {
+        drawLeftBackdrop(canvas, {
+          originalImage: s.originalImage,
+          transformedImage: s.transformedImage,
+          regions: s.regions,
+          bgFill: s.bgFill,
+          regionsOnlyView: s.regionsOnlyView,
+          regionImageSize: s.regionImageSize,
+          originalCanvasSize: s.originalCanvasSize,
+          viewport: s.leftViewport,
+        });
+      } else {
+        drawRightBackdrop(canvas, {
+          originalImage: s.originalImage,
+          transformedImage: s.transformedImage,
+          regions: s.regions,
+          bgFill: s.bgFill,
+          regionsOnlyView: s.regionsOnlyView,
+          outputCanvasSize: s.outputCanvasSize,
+          viewport: s.rightViewport,
+        });
+      }
+    }, DRAG_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [isDragging, side, backdropCanvas]);
+
   // ---- overlay redraw (vector polygons + handles + drawing previews) ----
   // Cheap: redraws on every interaction state change.
   useEffect(() => {

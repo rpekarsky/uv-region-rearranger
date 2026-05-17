@@ -333,6 +333,17 @@ input[type='checkbox']:focus-visible {
   background: var(--c-surface-2);
 }
 .model3d-mesh-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.model3d-mesh-mat {
+  flex: 0 1 auto;
+  margin-left: 8px;
+  color: var(--c-text-dim);
+  font-size: 11px;
+  max-width: 45%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

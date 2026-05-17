@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useEditorStore } from '../store';
 
@@ -27,6 +28,15 @@ export function Model3DSection() {
       setTexture3DOutputScale: s.setTexture3DOutputScale,
     })),
   );
+
+  const meshToMaterial = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!model3d) return map;
+    for (const [matName, meshes] of model3d.meshesByMaterial) {
+      for (const m of meshes) map.set(m.name || m.uuid, matName);
+    }
+    return map;
+  }, [model3d]);
 
   if (!model3d) {
     return <div className="model3d-empty">No model loaded. Drop a .glb into the 3D panel.</div>;
@@ -109,18 +119,26 @@ export function Model3DSection() {
         </button>
       </div>
       <div className="model3d-mesh-list">
-        {model3d.meshNames.map((name) => (
-          <label key={name} className="model3d-mesh-row">
-            <input
-              type="checkbox"
-              checked={meshVisibility[name] !== false}
-              onChange={(e) => setMeshVisibility(name, e.target.checked)}
-            />
-            <span className="model3d-mesh-name" title={name}>
-              {name}
-            </span>
-          </label>
-        ))}
+        {model3d.meshNames.map((name) => {
+          const matId = meshToMaterial.get(name);
+          return (
+            <label key={name} className="model3d-mesh-row">
+              <input
+                type="checkbox"
+                checked={meshVisibility[name] !== false}
+                onChange={(e) => setMeshVisibility(name, e.target.checked)}
+              />
+              <span className="model3d-mesh-name" title={name}>
+                {name}
+              </span>
+              {matId && (
+                <span className="model3d-mesh-mat" title={`Material: ${matId}`}>
+                  {matId}
+                </span>
+              )}
+            </label>
+          );
+        })}
       </div>
     </div>
   );

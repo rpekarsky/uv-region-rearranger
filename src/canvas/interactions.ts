@@ -372,6 +372,10 @@ export function onWindowMouseUp(e: MouseEvent): void {
 
   if (isDragMode(store.mode)) {
     store.setMode({ kind: 'editing' });
+    if (dragBegun) {
+      store.endAction();
+      dragBegun = false;
+    }
   }
 
   if (e.button === 0) {
@@ -635,7 +639,12 @@ function startScale(region: Region, handleKey: HandleKey, pxScale: number): void
   const C_pre = handles[handleKey];
   const P_pre = handles[getOppositeHandle(handleKey)];
 
+  // rebasePivot is the first region mutation for a scale op — push history
+  // BEFORE it so undo lands on the pre-rebase state. (Subsequent drag frames
+  // happen inside the lazy-begun bracket via handleDragMove.)
+  store.beginAction();
   store.rebasePivot(region.id, P_pre);
+  dragBegun = true;
   const refreshed = useEditorStore.getState().regions.find((r) => r.id === region.id)!;
   const t = refreshed.transform;
   const pivotScreen: Vec2 = [t.pivot[0] + t.translate[0], t.pivot[1] + t.translate[1]];
@@ -652,10 +661,21 @@ function startScale(region: Region, handleKey: HandleKey, pxScale: number): void
   });
 }
 
+// Deferred-action flag: drags shouldn't push to history until the user
+// actually moves the mouse. A click that resolves to "selectRegion + drag-
+// translate setup" without any movement should not create an undo entry.
+// startScale is the exception — it mutates regions immediately (rebasePivot)
+// so it sets this flag itself.
+let dragBegun = false;
+
 function handleDragMove(p: Vec2, shift: boolean): void {
   const store = useEditorStore.getState();
   const mode = store.mode;
   if (!isDragMode(mode)) return;
+  if (!dragBegun) {
+    store.beginAction();
+    dragBegun = true;
+  }
 
   switch (mode.kind) {
     case 'dragTranslate': {

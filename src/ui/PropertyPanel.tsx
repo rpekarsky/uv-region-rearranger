@@ -4,6 +4,7 @@ import { centroid } from '../geometry/polygon';
 import type { Region, Transform } from '../types';
 import { RotationDial } from './RotationDial';
 import { NumberInput } from './NumberInput';
+import { useLazyAction } from './useLazyAction';
 
 const RAD2DEG = 180 / Math.PI;
 const DEG2RAD = Math.PI / 180;
@@ -69,10 +70,21 @@ function NumField({ field, label, value, defaultValue, onChange, onReset }: NumF
   const isAtDefault = defaultValue !== undefined && Math.abs(value - defaultValue) < 1e-6;
   const handleReset =
     onReset ?? (defaultValue !== undefined ? () => onChange(defaultValue) : undefined);
+  // Lazy bracket: push history only on the FIRST keystroke that actually
+  // changes the value. A focus-then-blur with no edit creates no entry.
+  const lazy = useLazyAction();
   return (
     <label className="prop-row">
       <span>{label}</span>
-      <NumberInput data-field={field} value={value} onChange={onChange} />
+      <NumberInput
+        data-field={field}
+        value={value}
+        onChange={(v) => {
+          lazy.note();
+          onChange(v);
+        }}
+        onBlur={lazy.end}
+      />
       {handleReset && (
         <button
           type="button"

@@ -83,6 +83,9 @@ export interface EditorStore {
   // Texture Y-flip — GLB convention says no, but some authoring tools (Blender
   // baking, custom exports) end up needing the flip. User-toggleable in UI.
   texture3DFlipY: boolean;
+  // Quality scale for the 3D texture canvas. 0.5 = render at half resolution
+  // per axis (4x less pixel work). Lower = more fluid, softer texture.
+  texture3DOutputScale: number;
 
   // The image dimensions that current region/mask polygon coords are normalized
   // against. Set by loadConfig (from cfg.imageSize) and by image-set actions.
@@ -146,6 +149,7 @@ export interface EditorStore {
   setMeshVisibility: (name: string, visible: boolean) => void;
   setAllMeshesVisible: (visible: boolean) => void;
   setTexture3DFlipY: (v: boolean) => void;
+  setTexture3DOutputScale: (v: number) => void;
   setOutputCanvasSize: (size: [number, number] | null, stretch?: boolean) => void;
   setSourceCanvasSize: (size: [number, number], stretch: boolean) => void;
   loadConfig: (cfg: SerializedConfig) => void;
@@ -287,6 +291,7 @@ export const useEditorStore = create<EditorStore>()(
       selectedMaterialIds: [],
       meshVisibility: {},
       texture3DFlipY: false,
+      texture3DOutputScale: 0.5,
       regionImageSize: null,
       outputCanvasSize: null,
       originalCanvasSize: null,
@@ -597,6 +602,8 @@ export const useEditorStore = create<EditorStore>()(
       setMeshVisibility: (name, visible) =>
         set((s) => ({ meshVisibility: { ...s.meshVisibility, [name]: visible } })),
       setTexture3DFlipY: (v) => set({ texture3DFlipY: v }),
+      setTexture3DOutputScale: (v) =>
+        set({ texture3DOutputScale: Math.max(0.05, Math.min(1, v)) }),
       setAllMeshesVisible: (visible) =>
         set((s) => {
           if (!s.model3d) return s;

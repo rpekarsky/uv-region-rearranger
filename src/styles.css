@@ -293,6 +293,16 @@ input[type='checkbox']:focus-visible {
   font-size: 10px;
   padding: 2px 6px;
 }
+.model3d-quality-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.model3d-quality-row > select {
+  flex: 0 0 auto;
+}
 .model3d-material-select {
   background: var(--c-surface-2);
   color: var(--c-text);

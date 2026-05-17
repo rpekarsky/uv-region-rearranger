@@ -11,6 +11,8 @@ export function Model3DSection() {
     setAllMeshesVisible,
     texture3DFlipY,
     setTexture3DFlipY,
+    texture3DOutputScale,
+    setTexture3DOutputScale,
   } = useEditorStore(
     useShallow((s) => ({
       model3d: s.model3d,
@@ -21,6 +23,8 @@ export function Model3DSection() {
       setAllMeshesVisible: s.setAllMeshesVisible,
       texture3DFlipY: s.texture3DFlipY,
       setTexture3DFlipY: s.setTexture3DFlipY,
+      texture3DOutputScale: s.texture3DOutputScale,
+      setTexture3DOutputScale: s.setTexture3DOutputScale,
     })),
   );
 
@@ -41,6 +45,22 @@ export function Model3DSection() {
           onChange={(e) => setTexture3DFlipY(e.target.checked)}
         />
         flip texture Y
+      </label>
+
+      <label className="model3d-quality-row">
+        <span>Texture quality</span>
+        <select
+          className="model3d-material-select"
+          value={texture3DOutputScale}
+          onChange={(e) => setTexture3DOutputScale(parseFloat(e.target.value))}
+        >
+          <option value={0.1}>10%</option>
+          <option value={0.25}>25%</option>
+          <option value={0.33}>33%</option>
+          <option value={0.5}>50%</option>
+          <option value={0.75}>75%</option>
+          <option value={1}>100%</option>
+        </select>
       </label>
 
       <div className="model3d-subhead">Skin materials</div>

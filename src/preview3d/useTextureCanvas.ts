@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useEditorStore } from '../store';
 import { renderInverse } from '../render/pipeline';
-import { useThrottledValue } from './useThrottledValue';
 
 export type TextureSource = HTMLImageElement | HTMLCanvasElement;
 
@@ -15,16 +14,18 @@ export interface TextureSourceResult {
   key: unknown;
 }
 
-const THROTTLE_MS = 500;
+const EMPTY_RESULT: TextureSourceResult = { source: null, key: null };
 
 export function useTextureCanvas(): TextureSourceResult {
   // Persistent reusable canvas — created once per mount, reused across
-  // renderInverse calls to avoid ~64MB alloc/copy churn each pass.
+  // renderInverse calls to avoid alloc/copy churn each pass.
   const [reuseCanvas] = useState(() => document.createElement('canvas'));
+  const [result, setResult] = useState<TextureSourceResult>(EMPTY_RESULT);
 
   const originalImage = useEditorStore((s) => s.originalImage);
   const transformedImage = useEditorStore((s) => s.transformedImage);
-  const liveParams = useEditorStore(
+  const outputScale = useEditorStore((s) => s.texture3DOutputScale);
+  const params = useEditorStore(
     useShallow((s) => ({
       regions: s.regions,
       bgFill: s.bgFill,
@@ -33,21 +34,33 @@ export function useTextureCanvas(): TextureSourceResult {
       originalCanvasSize: s.originalCanvasSize,
     })),
   );
-  const params = useThrottledValue(liveParams, THROTTLE_MS);
 
-  return useMemo(() => {
-    if (transformedImage) {
-      renderInverse(
-        transformedImage,
-        params.regions,
-        params.bgFill,
-        params.regionsOnlyView,
-        params.originalCanvasSize ?? params.regionImageSize,
-        reuseCanvas,
-      );
-      return { source: reuseCanvas, key: params };
-    }
-    if (originalImage) return { source: originalImage, key: originalImage };
-    return { source: null, key: null };
-  }, [originalImage, transformedImage, params, reuseCanvas]);
+  // Defer all work to rAF — keeps renderInverse out of React's render phase
+  // so input handlers don't queue behind a heavy Canvas2D pass. rAF cleanup
+  // coalesces rapid changes into one render per frame.
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      if (transformedImage) {
+        renderInverse(
+          transformedImage,
+          params.regions,
+          params.bgFill,
+          params.regionsOnlyView,
+          params.originalCanvasSize ?? params.regionImageSize,
+          reuseCanvas,
+          outputScale,
+        );
+        setResult({ source: reuseCanvas, key: {} });
+        return;
+      }
+      if (originalImage) {
+        setResult({ source: originalImage, key: originalImage });
+        return;
+      }
+      setResult(EMPTY_RESULT);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [originalImage, transformedImage, params, outputScale, reuseCanvas]);
+
+  return result;
 }

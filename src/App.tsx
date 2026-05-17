@@ -6,9 +6,11 @@ import { CanvasZone } from './canvas/CanvasZone';
 import { RegionList } from './ui/RegionList';
 import { PropertyPanel } from './ui/PropertyPanel';
 import { HintsPanel } from './ui/HintsPanel';
+import { Model3DSection } from './ui/Model3DSection';
 import { KeyboardShortcuts } from './ui/KeyboardShortcuts';
 import { ZonesSplitter } from './ui/ZonesSplitter';
 import { CanvasSizeModal } from './ui/CanvasSizeModal';
+import { Preview3DPanel } from './preview3d/Preview3DPanel';
 import { onWindowMouseMove, onWindowMouseUp } from './canvas/interactions';
 import {
   downloadJSON,
@@ -28,6 +30,8 @@ export function App() {
     hasRegionSelected,
     zonesRatio,
     setZonesRatio,
+    originalSplitRatio,
+    setOriginalSplitRatio,
     showRegionNames,
     setShowRegionNames,
     sidebarOpen,
@@ -41,11 +45,14 @@ export function App() {
     regions,
     originalFilename,
     loadConfig,
+    hasModel3D,
   } = useEditorStore(
     useShallow((s) => ({
       hasRegionSelected: s.selectedRegionId !== null,
       zonesRatio: s.zonesRatio,
       setZonesRatio: s.setZonesRatio,
+      originalSplitRatio: s.originalSplitRatio,
+      setOriginalSplitRatio: s.setOriginalSplitRatio,
       showRegionNames: s.showRegionNames,
       setShowRegionNames: s.setShowRegionNames,
       sidebarOpen: s.sidebarOpen,
@@ -59,10 +66,12 @@ export function App() {
       regions: s.regions,
       originalFilename: s.originalFilename,
       loadConfig: s.loadConfig,
+      hasModel3D: s.model3d !== null,
     })),
   );
 
   const zonesRef = useRef<HTMLDivElement>(null);
+  const originalSplitRef = useRef<HTMLDivElement>(null);
   const [vertical, setVertical] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1200px)').matches,
   );
@@ -116,13 +125,39 @@ export function App() {
     ? { flex: `${1 - zonesRatio} 0 0`, minHeight: 0 }
     : { flex: `${1 - zonesRatio} 0 0`, minWidth: 0 };
 
+  // Inner split inside the Original zone runs orthogonal to the outer one
+  // so both children stay roughly square regardless of overall orientation.
+  const innerVertical = !vertical;
+  const innerTopStyle = innerVertical
+    ? { flex: `${originalSplitRatio} 0 0`, minHeight: 0 }
+    : { flex: `${originalSplitRatio} 0 0`, minWidth: 0 };
+  const innerBottomStyle = innerVertical
+    ? { flex: `${1 - originalSplitRatio} 0 0`, minHeight: 0 }
+    : { flex: `${1 - originalSplitRatio} 0 0`, minWidth: 0 };
+
   return (
     <div className="app">
       <KeyboardShortcuts />
       <main className="workspace">
         <div className={`zones ${vertical ? 'vertical' : ''}`} ref={zonesRef}>
           <div className="zone-slot" style={leftStyle}>
-            <CanvasZone side="left" />
+            <div
+              ref={originalSplitRef}
+              className={`original-split ${innerVertical ? 'vertical' : ''}`}
+            >
+              <div className="zone-slot" style={innerTopStyle}>
+                <CanvasZone side="left" />
+              </div>
+              <ZonesSplitter
+                containerRef={originalSplitRef}
+                setRatio={setOriginalSplitRatio}
+                vertical={innerVertical}
+                onDoubleClick={() => setOriginalSplitRatio(0.7)}
+              />
+              <div className="zone-slot" style={innerBottomStyle}>
+                <Preview3DPanel />
+              </div>
+            </div>
           </div>
           <ZonesSplitter
             containerRef={zonesRef}
@@ -235,6 +270,12 @@ export function App() {
             <section className="sidebar-section">
               <h3>Selected region</h3>
               <PropertyPanel />
+            </section>
+          )}
+          {hasModel3D && (
+            <section className="sidebar-section">
+              <h3>3D Model</h3>
+              <Model3DSection />
             </section>
           )}
           <section className="sidebar-section help">

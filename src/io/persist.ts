@@ -65,10 +65,13 @@ interface UIPrefs {
   leftViewport: Viewport;
   rightViewport: Viewport;
   zonesRatio: number;
+  originalSplitRatio: number;
   regionsOnlyView: boolean;
   loupeAlwaysOn: boolean;
   showRegionNames: boolean;
   sidebarOpen: boolean;
+  texture3DFlipY: boolean;
+  texture3DOutputScale: number;
 }
 
 let uiSaveTimer: number | null = null;
@@ -82,10 +85,13 @@ function scheduleUISave(): void {
       leftViewport: s.leftViewport,
       rightViewport: s.rightViewport,
       zonesRatio: s.zonesRatio,
+      originalSplitRatio: s.originalSplitRatio,
       regionsOnlyView: s.regionsOnlyView,
       loupeAlwaysOn: s.loupeAlwaysOn,
       showRegionNames: s.showRegionNames,
       sidebarOpen: s.sidebarOpen,
+      texture3DFlipY: s.texture3DFlipY,
+      texture3DOutputScale: s.texture3DOutputScale,
     };
     try {
       localStorage.setItem(UI_STORAGE_KEY, JSON.stringify(prefs));
@@ -101,10 +107,13 @@ export function setupUIPersistence(): () => void {
       state.leftViewport !== prev.leftViewport ||
       state.rightViewport !== prev.rightViewport ||
       state.zonesRatio !== prev.zonesRatio ||
+      state.originalSplitRatio !== prev.originalSplitRatio ||
       state.regionsOnlyView !== prev.regionsOnlyView ||
       state.loupeAlwaysOn !== prev.loupeAlwaysOn ||
       state.showRegionNames !== prev.showRegionNames ||
-      state.sidebarOpen !== prev.sidebarOpen
+      state.sidebarOpen !== prev.sidebarOpen ||
+      state.texture3DFlipY !== prev.texture3DFlipY ||
+      state.texture3DOutputScale !== prev.texture3DOutputScale
     ) {
       scheduleUISave();
     }
@@ -120,10 +129,15 @@ export function restoreUIPersistence(): void {
     if (prefs.leftViewport) store.setLeftViewport(prefs.leftViewport);
     if (prefs.rightViewport) store.setRightViewport(prefs.rightViewport);
     if (typeof prefs.zonesRatio === 'number') store.setZonesRatio(prefs.zonesRatio);
+    if (typeof prefs.originalSplitRatio === 'number')
+      store.setOriginalSplitRatio(prefs.originalSplitRatio);
     if (typeof prefs.regionsOnlyView === 'boolean') store.setRegionsOnlyView(prefs.regionsOnlyView);
     if (typeof prefs.loupeAlwaysOn === 'boolean') store.setLoupeAlwaysOn(prefs.loupeAlwaysOn);
     if (typeof prefs.showRegionNames === 'boolean') store.setShowRegionNames(prefs.showRegionNames);
     if (typeof prefs.sidebarOpen === 'boolean') store.setSidebarOpen(prefs.sidebarOpen);
+    if (typeof prefs.texture3DFlipY === 'boolean') store.setTexture3DFlipY(prefs.texture3DFlipY);
+    if (typeof prefs.texture3DOutputScale === 'number')
+      store.setTexture3DOutputScale(prefs.texture3DOutputScale);
   } catch (err) {
     console.warn('[persist] Failed to restore UI prefs, clearing:', err);
     localStorage.removeItem(UI_STORAGE_KEY);

@@ -81,13 +81,20 @@ export function renderInverse(
   bgFill: BgFill,
   regionsOnly = false,
   sourceSize?: [number, number] | null,
+  target?: HTMLCanvasElement,
+  outputScale = 1,
 ): HTMLCanvasElement {
   const w = sourceSize?.[0] ?? aiImage.naturalWidth ?? aiImage.width;
   const h = sourceSize?.[1] ?? aiImage.naturalHeight ?? aiImage.height;
-  const out = document.createElement('canvas');
-  out.width = w;
-  out.height = h;
+  const s = outputScale;
+  const cw = Math.max(1, Math.round(w * s));
+  const ch = Math.max(1, Math.round(h * s));
+  const out = target ?? document.createElement('canvas');
+  if (out.width !== cw) out.width = cw;
+  if (out.height !== ch) out.height = ch;
   const ctx = out.getContext('2d')!;
+  // Baseline: source-coord units → physical pixels via uniform scale.
+  ctx.setTransform(s, 0, 0, s, 0, 0);
 
   // Always paint bg first so areas outside the output canvas footprint (when
   // sourceSize > aiImage size) end up with bg colour, not transparent.
@@ -111,15 +118,16 @@ export function renderInverse(
   }
 
   // Back-project: clip to SOURCE polygon (in canvas coords), then draw aiImage
-  // with M^-1. AI pixels at transformed-poly land at source-poly.
+  // with M^-1. AI pixels at transformed-poly land at source-poly. Pre-multiply
+  // outputScale into every setTransform so the scale baseline survives.
   for (const region of regions) {
     const M = buildRegionMatrix(region.transform);
     const Minv = invert(M);
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(s, 0, 0, s, 0, 0);
     pathPolygon(ctx, region.polygon);
     ctx.clip();
-    setMatrix(ctx, Minv);
+    ctx.setTransform(s * Minv[0], s * Minv[1], s * Minv[2], s * Minv[3], s * Minv[4], s * Minv[5]);
     ctx.drawImage(aiImage, 0, 0);
     ctx.restore();
   }

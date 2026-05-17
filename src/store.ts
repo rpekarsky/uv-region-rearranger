@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { temporal } from 'zundo';
 import type {
   BgFill,
+  CameraState,
   HandleKey,
   Mode,
   Region,
@@ -14,6 +15,8 @@ import type {
 import { bbox, centroid } from './geometry/polygon';
 import { cacheImage, clearCachedImage } from './io/imageCache';
 import { applyPoint, buildRegionMatrix, compensateSourceScale } from './geometry/transform';
+import type { LoadedModel } from './preview3d/types';
+import { cacheModel, clearCachedModel } from './preview3d/modelCache';
 
 const IDENTITY_VIEWPORT: Viewport = { scale: 1, panX: 0, panY: 0 };
 
@@ -71,6 +74,26 @@ export interface EditorStore {
 
   // Splitter ratio between left and right zones, 0..1 (left's share).
   zonesRatio: number;
+  // Splitter ratio inside the Original (source) zone, 0..1 (canvas's share).
+  originalSplitRatio: number;
+
+  // 3D model — NOT partialized into history/persistence; THREE objects.
+  model3d: LoadedModel | null;
+  selectedMaterialIds: string[];
+  meshVisibility: Record<string, boolean>;
+  // Texture Y-flip — GLB convention says no, but some authoring tools (Blender
+  // baking, custom exports) end up needing the flip. User-toggleable in UI.
+  texture3DFlipY: boolean;
+  // Quality scale for the 3D texture canvas. 0.5 = render at half resolution
+  // per axis (4x less pixel work). Lower = more fluid, softer texture.
+  texture3DOutputScale: number;
+  // Per-region saved camera state for the 3D preview. Only meaningful when
+  // followRegions is on. Persisted in project JSON.
+  followRegions: boolean;
+  cameraStates: Record<string, CameraState>;
+  // Monotonic tick — increments on "Reset camera" button. A child of the R3F
+  // Canvas subscribes and re-fits the model bounds.
+  resetCameraTick: number;
 
   // The image dimensions that current region/mask polygon coords are normalized
   // against. Set by loadConfig (from cfg.imageSize) and by image-set actions.
@@ -128,6 +151,16 @@ export interface EditorStore {
   setSidebarOpen: (v: boolean) => void;
   setRightVertexEditUnlocked: (v: boolean) => void;
   setZonesRatio: (v: number) => void;
+  setOriginalSplitRatio: (v: number) => void;
+  setModel3D: (model: LoadedModel | null, blob?: Blob | null) => void;
+  setSelectedMaterialIds: (ids: string[]) => void;
+  setMeshVisibility: (name: string, visible: boolean) => void;
+  setAllMeshesVisible: (visible: boolean) => void;
+  setTexture3DFlipY: (v: boolean) => void;
+  setTexture3DOutputScale: (v: number) => void;
+  setFollowRegions: (v: boolean) => void;
+  setCameraState: (regionId: string, state: CameraState) => void;
+  requestCameraReset: () => void;
   setOutputCanvasSize: (size: [number, number] | null, stretch?: boolean) => void;
   setSourceCanvasSize: (size: [number, number], stretch: boolean) => void;
   loadConfig: (cfg: SerializedConfig) => void;
@@ -264,6 +297,15 @@ export const useEditorStore = create<EditorStore>()(
       sidebarOpen: true,
       rightVertexEditUnlocked: false,
       zonesRatio: 0.5,
+      originalSplitRatio: 0.7,
+      model3d: null,
+      selectedMaterialIds: [],
+      meshVisibility: {},
+      texture3DFlipY: false,
+      texture3DOutputScale: 0.5,
+      followRegions: false,
+      cameraStates: {},
+      resetCameraTick: 0,
       regionImageSize: null,
       outputCanvasSize: null,
       originalCanvasSize: null,
@@ -313,11 +355,16 @@ export const useEditorStore = create<EditorStore>()(
       },
 
       deleteRegion: (id) =>
-        set((s) => ({
-          regions: s.regions.filter((r) => r.id !== id),
-          selectedRegionId: s.selectedRegionId === id ? null : s.selectedRegionId,
-          mode: s.selectedRegionId === id ? { kind: 'idle' } : s.mode,
-        })),
+        set((s) => {
+          const nextCams = { ...s.cameraStates };
+          delete nextCams[id];
+          return {
+            regions: s.regions.filter((r) => r.id !== id),
+            selectedRegionId: s.selectedRegionId === id ? null : s.selectedRegionId,
+            mode: s.selectedRegionId === id ? { kind: 'idle' } : s.mode,
+            cameraStates: nextCams,
+          };
+        }),
 
       selectRegion: (id, side) =>
         set((s) => {
@@ -550,6 +597,43 @@ export const useEditorStore = create<EditorStore>()(
       setSidebarOpen: (v) => set({ sidebarOpen: v }),
       setRightVertexEditUnlocked: (v) => set({ rightVertexEditUnlocked: v }),
       setZonesRatio: (v) => set({ zonesRatio: Math.max(0.02, Math.min(0.98, v)) }),
+      setOriginalSplitRatio: (v) =>
+        set({ originalSplitRatio: Math.max(0.05, Math.min(0.95, v)) }),
+      setModel3D: (model, blob) => {
+        set((s) => {
+          if (!model) return { model3d: null, selectedMaterialIds: [], meshVisibility: {} };
+          const visibility: Record<string, boolean> = {};
+          for (const name of model.meshNames) visibility[name] = true;
+          const validExisting = s.selectedMaterialIds.filter((n) =>
+            model.materialNames.includes(n),
+          );
+          const autoPick =
+            model.materialNames.find((n) => /car_paint(?!_at)/i.test(n)) ??
+            model.materialNames[0];
+          const selectedMaterialIds =
+            validExisting.length > 0 ? validExisting : autoPick ? [autoPick] : [];
+          return { model3d: model, meshVisibility: visibility, selectedMaterialIds };
+        });
+        if (model && blob) void cacheModel(blob, model.filename);
+        else if (!model) void clearCachedModel();
+      },
+      setSelectedMaterialIds: (ids) => set({ selectedMaterialIds: ids }),
+      setMeshVisibility: (name, visible) =>
+        set((s) => ({ meshVisibility: { ...s.meshVisibility, [name]: visible } })),
+      setTexture3DFlipY: (v) => set({ texture3DFlipY: v }),
+      setTexture3DOutputScale: (v) =>
+        set({ texture3DOutputScale: Math.max(0.05, Math.min(1, v)) }),
+      setFollowRegions: (v) => set({ followRegions: v }),
+      setCameraState: (regionId, state) =>
+        set((s) => ({ cameraStates: { ...s.cameraStates, [regionId]: state } })),
+      requestCameraReset: () => set((s) => ({ resetCameraTick: s.resetCameraTick + 1 })),
+      setAllMeshesVisible: (visible) =>
+        set((s) => {
+          if (!s.model3d) return s;
+          const next: Record<string, boolean> = {};
+          for (const name of s.model3d.meshNames) next[name] = visible;
+          return { meshVisibility: next };
+        }),
       setOutputCanvasSize: (size, stretch = false) =>
         set((s) => {
           // "Effective" old/new sizes: null falls back to source size for ratio purposes.
@@ -606,6 +690,7 @@ export const useEditorStore = create<EditorStore>()(
             }
             outputCanvasSize = imgSize;
           }
+          const p3d = cfg.preview3d ?? {};
           return {
             regions,
             bgFill: cfg.bgFill,
@@ -618,6 +703,11 @@ export const useEditorStore = create<EditorStore>()(
             selectedSide: 'right',
             rightVertexEditUnlocked: false,
             mode: { kind: 'idle' },
+            texture3DFlipY: p3d.flipY ?? s.texture3DFlipY,
+            selectedMaterialIds: p3d.selectedMaterialIds ?? s.selectedMaterialIds,
+            meshVisibility: p3d.meshVisibility ?? s.meshVisibility,
+            followRegions: p3d.followRegions ?? false,
+            cameraStates: p3d.cameraStates ?? {},
           };
         }),
 

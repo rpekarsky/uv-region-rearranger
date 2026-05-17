@@ -125,6 +125,13 @@ export function serializeState(): SerializedConfig {
       polygon: r.polygon.map((p) => toUV(p, w, h)),
       transform: transformToUV(r.transform, w, h),
     })),
+    preview3d: {
+      flipY: s.texture3DFlipY,
+      selectedMaterialIds: s.selectedMaterialIds,
+      meshVisibility: s.meshVisibility,
+      followRegions: s.followRegions,
+      cameraStates: s.cameraStates,
+    },
   };
 }
 
@@ -171,5 +178,6 @@ export function parseConfig(data: unknown): SerializedConfig {
     imageSourceFilename: cfg.imageSourceFilename ?? null,
     bgFill: cfg.bgFill ?? { color: '#000000', transparent: false },
     regions,
+    preview3d: cfg.preview3d,
   };
 }

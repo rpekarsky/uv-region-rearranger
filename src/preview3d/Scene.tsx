@@ -45,6 +45,9 @@ function AutoFit({ model }: { model: LoadedModel }) {
 function TextureBinder({ model }: { model: LoadedModel }) {
   const selectedMaterialIds = useEditorStore((s) => s.selectedMaterialIds);
   const flipY = useEditorStore((s) => s.texture3DFlipY);
+  // Subscribed directly (not via useTextureCanvas) so the effect re-fires on
+  // quality change even if sourceKey identity propagation lags by a frame.
+  const outputScale = useEditorStore((s) => s.texture3DOutputScale);
   const { source, key: sourceKey } = useTextureCanvas();
   const { gl } = useThree();
   // Kept for completeness in case we re-enable mipmaps later; without them
@@ -53,6 +56,12 @@ function TextureBinder({ model }: { model: LoadedModel }) {
   const textureRef = useRef<Texture | null>(null);
   const materialRef = useRef<MeshBasicMaterial | null>(null);
   const prevBoundRef = useRef<string[]>([]);
+  // Track actual canvas pixel dims. Three.js uses texStorage2D on WebGL2 which
+  // immutably allocates GPU memory at the dims of the FIRST upload — subsequent
+  // texSubImage2D calls silently mis-sample when canvas dims change. Detecting
+  // a dim change here forces a Texture recreate, which triggers fresh
+  // texStorage2D at the new dims.
+  const lastDimsRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
 
   useEffect(() => {
     const prev = prevBoundRef.current;
@@ -70,7 +79,13 @@ function TextureBinder({ model }: { model: LoadedModel }) {
       return;
     }
 
-    if (!textureRef.current || textureRef.current.image !== source) {
+    const sourceCanvas = source instanceof HTMLCanvasElement ? source : null;
+    const dimsChanged =
+      sourceCanvas !== null &&
+      (sourceCanvas.width !== lastDimsRef.current.w ||
+        sourceCanvas.height !== lastDimsRef.current.h);
+
+    if (!textureRef.current || textureRef.current.image !== source || dimsChanged) {
       textureRef.current?.dispose();
       const tex = new Texture(source);
       tex.flipY = flipY;
@@ -90,6 +105,10 @@ function TextureBinder({ model }: { model: LoadedModel }) {
       tex.needsUpdate = true;
     }
 
+    if (sourceCanvas) {
+      lastDimsRef.current = { w: sourceCanvas.width, h: sourceCanvas.height };
+    }
+
     if (!materialRef.current) {
       materialRef.current = new MeshBasicMaterial({ map: textureRef.current });
     }
@@ -100,7 +119,7 @@ function TextureBinder({ model }: { model: LoadedModel }) {
     }
 
     prevBoundRef.current = [...selectedMaterialIds];
-  }, [model, selectedMaterialIds, source, sourceKey, flipY]);
+  }, [model, selectedMaterialIds, source, sourceKey, flipY, outputScale]);
 
   useEffect(() => {
     return () => {

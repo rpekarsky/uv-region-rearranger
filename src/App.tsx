@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useEventListener } from 'usehooks-ts';
 import { Toaster } from 'sonner';
 import { CanvasZone } from './canvas/CanvasZone';
-import { Toolbar } from './ui/Toolbar';
 import { RegionList } from './ui/RegionList';
 import { PropertyPanel } from './ui/PropertyPanel';
 import { HintsPanel } from './ui/HintsPanel';
@@ -46,7 +45,6 @@ export function App() {
   return (
     <div className="app">
       <KeyboardShortcuts />
-      <Toolbar />
       <main className="workspace">
         <div className="zones" ref={zonesRef}>
           <div className="zone-slot" style={leftStyle}>
@@ -70,6 +68,36 @@ export function App() {
           title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
         />
         <aside className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
+          <section className="sidebar-section">
+            <h3>Project</h3>
+            <div className="sb-row">
+              <button type="button" className="btn">Load JSON</button>
+              <button type="button" className="btn">Save JSON</button>
+            </div>
+            <div className="sb-row">
+              <button type="button" className="btn small">⚙ Canvas size</button>
+              <button type="button" className="btn small danger">Reset</button>
+            </div>
+          </section>
+          <section className="sidebar-section">
+            <h3>View</h3>
+            <div className="sb-row">
+              <span className="bg-fill-label">BG:</span>
+              <input type="color" defaultValue="#000000" aria-label="Background color" />
+              <label className="bg-checkbox">
+                <input type="checkbox" />
+                transparent
+              </label>
+            </div>
+            <label className="bg-checkbox">
+              <input type="checkbox" />
+              regions only
+            </label>
+            <label className="bg-checkbox">
+              <input type="checkbox" />
+              loupe always
+            </label>
+          </section>
           <section className="sidebar-section">
             <h3>Regions</h3>
             <label className="bg-checkbox" style={{ marginBottom: 6 }}>

@@ -523,9 +523,18 @@ export function CanvasZone({ side }: Props) {
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <div className="zone-label">
-        <span className="zone-label-name">{label}</span>
-        {liveTag && <span className="zone-label-live">{liveTag}</span>}
+      <div className="zone-header">
+        <div className="zone-header-row">
+          <button type="button" className="zone-label-btn" title={`Load ${label.toLowerCase()}`}>
+            {label}
+          </button>
+          {baseImage && (
+            <button type="button" className="zone-label-clear" title={`Clear ${label.toLowerCase()}`}>
+              ×
+            </button>
+          )}
+        </div>
+        {liveTag && <div className="zone-label-live">{liveTag}</div>}
       </div>
       <button
         className="zone-download"

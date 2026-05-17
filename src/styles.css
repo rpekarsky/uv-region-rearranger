@@ -79,6 +79,15 @@ body {
   padding: 4px 8px;
   font-size: 12px;
 }
+.btn.danger {
+  background: #5a2a2a;
+  border-color: #804040;
+}
+.btn.danger:hover:not(:disabled) {
+  background: #b03030;
+  border-color: #d04040;
+  color: #fff;
+}
 
 label.btn {
   display: inline-flex;
@@ -246,30 +255,78 @@ label.btn {
   outline-offset: -10px;
 }
 
-.zone-label {
+.zone-header {
   position: absolute;
   top: 8px;
   left: 8px;
+  z-index: 2;
   display: flex;
-  gap: 8px;
-  align-items: baseline;
-  background: rgba(20, 20, 20, 0.7);
-  padding: 4px 10px;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.zone-header-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.zone-label-btn {
+  pointer-events: auto;
+  background: rgba(20, 20, 20, 0.75);
+  border: 1px solid #444;
+  color: #ddd;
+  padding: 6px 12px;
   border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.6px;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.zone-label-btn:hover {
+  background: #2d6cdf;
+  border-color: #4080ee;
+  color: #fff;
+}
+.zone-label-clear {
+  pointer-events: auto;
+  background: rgba(20, 20, 20, 0.75);
+  border: 1px solid #444;
   color: #ddd;
-  pointer-events: none;
-  z-index: 2;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.zone-label-clear:hover {
+  background: #b03030;
+  border-color: #d04040;
+  color: #fff;
 }
 .zone-label-live {
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
+  background: rgba(20, 20, 20, 0.6);
   color: #4080ee;
   font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  letter-spacing: 0;
 }
 
 .zone-download {
@@ -377,6 +434,20 @@ label.btn {
 .sidebar-section {
   padding: 12px;
   border-bottom: 1px solid #333;
+}
+.sb-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.sb-row:last-child {
+  margin-bottom: 0;
+}
+.sb-row > .btn {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .sidebar-section h3 {
   margin: 0 0 10px;

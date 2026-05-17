@@ -372,6 +372,7 @@ export function onWindowMouseUp(e: MouseEvent): void {
 
   if (isDragMode(store.mode)) {
     store.setMode({ kind: 'editing' });
+    store.endAction();
   }
 
   if (e.button === 0) {
@@ -536,7 +537,9 @@ export function cancelDrawing(): void {
 // ---------- drag operations ----------
 
 function startTranslate(region: Region, mouseStart: Vec2): void {
-  useEditorStore.getState().setMode({
+  const store = useEditorStore.getState();
+  store.beginAction();
+  store.setMode({
     kind: 'dragTranslate',
     regionId: region.id,
     mouseStart,
@@ -550,7 +553,9 @@ function startVertexDrag(
   mouseStart: Vec2,
   vertexIndex: number,
 ): void {
-  useEditorStore.getState().setMode({
+  const store = useEditorStore.getState();
+  store.beginAction();
+  store.setMode({
     kind: 'dragVertex',
     viaSide: side,
     regionId: region.id,
@@ -564,7 +569,9 @@ function startRotate(region: Region, mouseStart: Vec2): void {
   const t = region.transform;
   const pivotScreen: Vec2 = [t.pivot[0] + t.translate[0], t.pivot[1] + t.translate[1]];
   const startAngle = Math.atan2(mouseStart[1] - pivotScreen[1], mouseStart[0] - pivotScreen[0]);
-  useEditorStore.getState().setMode({
+  const store = useEditorStore.getState();
+  store.beginAction();
+  store.setMode({
     kind: 'dragRotate',
     regionId: region.id,
     pivotScreen,
@@ -584,7 +591,9 @@ function snapshotTransform(t: Region['transform']): Region['transform'] {
 }
 
 function startSourceTranslate(region: Region, mouseStart: Vec2): void {
-  useEditorStore.getState().setMode({
+  const store = useEditorStore.getState();
+  store.beginAction();
+  store.setMode({
     kind: 'dragSourceTranslate',
     regionId: region.id,
     mouseStart,
@@ -596,7 +605,9 @@ function startSourceTranslate(region: Region, mouseStart: Vec2): void {
 function startSourceRotate(region: Region, mouseStart: Vec2): void {
   const pivot = centroid(region.polygon);
   const startAngle = Math.atan2(mouseStart[1] - pivot[1], mouseStart[0] - pivot[0]);
-  useEditorStore.getState().setMode({
+  const store = useEditorStore.getState();
+  store.beginAction();
+  store.setMode({
     kind: 'dragSourceRotate',
     regionId: region.id,
     pivot: [pivot[0], pivot[1]],
@@ -614,7 +625,9 @@ function startSourceScale(region: Region, handleKey: HandleKey, pxScale: number)
   const handles = getHandles(region.polygon, IDENTITY_MATRIX, pxScale);
   const C = handles[handleKey];
   const P = handles[getOppositeHandle(handleKey)];
-  useEditorStore.getState().setMode({
+  const store = useEditorStore.getState();
+  store.beginAction();
+  store.setMode({
     kind: 'dragSourceScale',
     regionId: region.id,
     handleKey,
@@ -635,6 +648,9 @@ function startScale(region: Region, handleKey: HandleKey, pxScale: number): void
   const C_pre = handles[handleKey];
   const P_pre = handles[getOppositeHandle(handleKey)];
 
+  // beginAction must precede rebasePivot — that's the first region mutation,
+  // and we want the pre-rebase state as the undo target for the whole scale op.
+  store.beginAction();
   store.rebasePivot(region.id, P_pre);
   const refreshed = useEditorStore.getState().regions.find((r) => r.id === region.id)!;
   const t = refreshed.transform;

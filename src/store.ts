@@ -19,16 +19,9 @@ const IDENTITY_VIEWPORT: Viewport = { scale: 1, panX: 0, panY: 0 };
 
 // Debounce helper — collapses bursts of state updates (drag, typing) into
 // a single history entry captured ~300ms after the last change.
-function debounce<T extends (...args: never[]) => void>(fn: T, ms: number): T {
-  let timer: number | null = null;
-  return ((...args: never[]) => {
-    if (timer != null) clearTimeout(timer);
-    timer = setTimeout(() => {
-      timer = null;
-      fn(...args);
-    }, ms);
-  }) as T;
-}
+// Cap on retained undo entries — applied to manual pushes via pushHistory()
+// since they bypass zundo's internal limit enforcement.
+const HISTORY_LIMIT = 100;
 
 // History snapshot shape — only persistent edit-relevant fields.
 export interface HistorySnapshot {
@@ -140,6 +133,14 @@ export interface EditorStore {
   setOutputCanvasSize: (size: [number, number] | null, stretch?: boolean) => void;
   setSourceCanvasSize: (size: [number, number], stretch: boolean) => void;
   loadConfig: (cfg: SerializedConfig) => void;
+  // Manually push the current partialized snapshot to undo history. Used at the
+  // START of continuous actions (drag, property edit) to capture pre-action state.
+  pushHistory: () => void;
+  // beginAction = pushHistory() + pause zundo so subsequent live updates during
+  // the action don't generate intermediate undo entries.
+  beginAction: () => void;
+  // endAction = resume zundo. Pair with beginAction.
+  endAction: () => void;
 }
 
 // Rescale a region under a source-space change of basis (sx, sy).
@@ -621,6 +622,22 @@ export const useEditorStore = create<EditorStore>()(
             mode: { kind: 'idle' },
           };
         }),
+
+      pushHistory: () => {
+        const s = get();
+        const snapshot: HistorySnapshot = { regions: s.regions, bgFill: s.bgFill };
+        const t = useEditorStore.temporal.getState();
+        const past = [...t.pastStates, snapshot];
+        if (past.length > HISTORY_LIMIT) past.splice(0, past.length - HISTORY_LIMIT);
+        useEditorStore.temporal.setState({ pastStates: past, futureStates: [] });
+      },
+      beginAction: () => {
+        get().pushHistory();
+        useEditorStore.temporal.getState().pause();
+      },
+      endAction: () => {
+        useEditorStore.temporal.getState().resume();
+      },
     }),
     {
       // Track only edit-relevant fields. Viewport/hover/mode/selection are excluded
@@ -629,10 +646,12 @@ export const useEditorStore = create<EditorStore>()(
         regions: state.regions,
         bgFill: state.bgFill,
       }),
-      limit: 100,
-      // Bursts of updates (drag, typing into property fields) collapse into one
-      // history entry captured ~300ms after the last change.
-      handleSet: (handleSet) => debounce((pastState) => handleSet(pastState), 300),
+      limit: HISTORY_LIMIT,
+      // Synchronous push: every partialized state change adds one history entry.
+      // Continuous actions (drags, property typing) suppress this via
+      // beginAction/endAction which pause zundo and push exactly one pre-action
+      // snapshot manually. Sync actions (flip, delete, etc.) get their natural
+      // single-set() push automatically through this handler.
     },
   ),
 );

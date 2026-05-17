@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useEditorStore } from '../store';
 
 const RAD2DEG = 180 / Math.PI;
 const DEG2RAD = Math.PI / 180;
@@ -36,6 +37,7 @@ export function RotationDial({ value, onChange }: Props) {
 
   const onMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
+    useEditorStore.getState().beginAction();
     dragStateRef.current = { startAngle: getAngle(e), startValue: value };
     setDragging(true);
   };
@@ -56,6 +58,7 @@ export function RotationDial({ value, onChange }: Props) {
     const onUp = () => {
       setDragging(false);
       dragStateRef.current = null;
+      useEditorStore.getState().endAction();
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
@@ -127,6 +130,8 @@ export function RotationDial({ value, onChange }: Props) {
         step="any"
         value={Number(displayDeg.toFixed(2))}
         onChange={handleNumberChange}
+        onFocus={() => useEditorStore.getState().beginAction()}
+        onBlur={() => useEditorStore.getState().endAction()}
       />
       <span className="rotation-deg">°</span>
     </div>

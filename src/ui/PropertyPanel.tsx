@@ -69,10 +69,21 @@ function NumField({ field, label, value, defaultValue, onChange, onReset }: NumF
   const isAtDefault = defaultValue !== undefined && Math.abs(value - defaultValue) < 1e-6;
   const handleReset =
     onReset ?? (defaultValue !== undefined ? () => onChange(defaultValue) : undefined);
+  // Bracket each focus → blur cycle as a single undo action: snapshot pre-edit
+  // state on focus, push exactly one entry; live keystrokes update the store
+  // for preview but don't accrue history entries.
+  const beginAction = useEditorStore((s) => s.beginAction);
+  const endAction = useEditorStore((s) => s.endAction);
   return (
     <label className="prop-row">
       <span>{label}</span>
-      <NumberInput data-field={field} value={value} onChange={onChange} />
+      <NumberInput
+        data-field={field}
+        value={value}
+        onChange={onChange}
+        onFocus={beginAction}
+        onBlur={endAction}
+      />
       {handleReset && (
         <button
           type="button"

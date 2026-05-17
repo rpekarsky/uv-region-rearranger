@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { temporal } from 'zundo';
 import type {
   BgFill,
+  CameraState,
   HandleKey,
   Mode,
   Region,
@@ -86,6 +87,13 @@ export interface EditorStore {
   // Quality scale for the 3D texture canvas. 0.5 = render at half resolution
   // per axis (4x less pixel work). Lower = more fluid, softer texture.
   texture3DOutputScale: number;
+  // Per-region saved camera state for the 3D preview. Only meaningful when
+  // followRegions is on. Persisted in project JSON.
+  followRegions: boolean;
+  cameraStates: Record<string, CameraState>;
+  // Monotonic tick — increments on "Reset camera" button. A child of the R3F
+  // Canvas subscribes and re-fits the model bounds.
+  resetCameraTick: number;
 
   // The image dimensions that current region/mask polygon coords are normalized
   // against. Set by loadConfig (from cfg.imageSize) and by image-set actions.
@@ -150,6 +158,9 @@ export interface EditorStore {
   setAllMeshesVisible: (visible: boolean) => void;
   setTexture3DFlipY: (v: boolean) => void;
   setTexture3DOutputScale: (v: number) => void;
+  setFollowRegions: (v: boolean) => void;
+  setCameraState: (regionId: string, state: CameraState) => void;
+  requestCameraReset: () => void;
   setOutputCanvasSize: (size: [number, number] | null, stretch?: boolean) => void;
   setSourceCanvasSize: (size: [number, number], stretch: boolean) => void;
   loadConfig: (cfg: SerializedConfig) => void;
@@ -292,6 +303,9 @@ export const useEditorStore = create<EditorStore>()(
       meshVisibility: {},
       texture3DFlipY: false,
       texture3DOutputScale: 0.5,
+      followRegions: false,
+      cameraStates: {},
+      resetCameraTick: 0,
       regionImageSize: null,
       outputCanvasSize: null,
       originalCanvasSize: null,
@@ -341,11 +355,16 @@ export const useEditorStore = create<EditorStore>()(
       },
 
       deleteRegion: (id) =>
-        set((s) => ({
-          regions: s.regions.filter((r) => r.id !== id),
-          selectedRegionId: s.selectedRegionId === id ? null : s.selectedRegionId,
-          mode: s.selectedRegionId === id ? { kind: 'idle' } : s.mode,
-        })),
+        set((s) => {
+          const nextCams = { ...s.cameraStates };
+          delete nextCams[id];
+          return {
+            regions: s.regions.filter((r) => r.id !== id),
+            selectedRegionId: s.selectedRegionId === id ? null : s.selectedRegionId,
+            mode: s.selectedRegionId === id ? { kind: 'idle' } : s.mode,
+            cameraStates: nextCams,
+          };
+        }),
 
       selectRegion: (id, side) =>
         set((s) => {
@@ -604,6 +623,10 @@ export const useEditorStore = create<EditorStore>()(
       setTexture3DFlipY: (v) => set({ texture3DFlipY: v }),
       setTexture3DOutputScale: (v) =>
         set({ texture3DOutputScale: Math.max(0.05, Math.min(1, v)) }),
+      setFollowRegions: (v) => set({ followRegions: v }),
+      setCameraState: (regionId, state) =>
+        set((s) => ({ cameraStates: { ...s.cameraStates, [regionId]: state } })),
+      requestCameraReset: () => set((s) => ({ resetCameraTick: s.resetCameraTick + 1 })),
       setAllMeshesVisible: (visible) =>
         set((s) => {
           if (!s.model3d) return s;
@@ -667,6 +690,7 @@ export const useEditorStore = create<EditorStore>()(
             }
             outputCanvasSize = imgSize;
           }
+          const p3d = cfg.preview3d ?? {};
           return {
             regions,
             bgFill: cfg.bgFill,
@@ -679,6 +703,11 @@ export const useEditorStore = create<EditorStore>()(
             selectedSide: 'right',
             rightVertexEditUnlocked: false,
             mode: { kind: 'idle' },
+            texture3DFlipY: p3d.flipY ?? s.texture3DFlipY,
+            selectedMaterialIds: p3d.selectedMaterialIds ?? s.selectedMaterialIds,
+            meshVisibility: p3d.meshVisibility ?? s.meshVisibility,
+            followRegions: p3d.followRegions ?? false,
+            cameraStates: p3d.cameraStates ?? {},
           };
         }),
 

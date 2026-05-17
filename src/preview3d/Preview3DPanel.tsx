@@ -1,12 +1,20 @@
 import { type ChangeEvent, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { toast } from 'sonner';
+import { useShallow } from 'zustand/react/shallow';
 import { useEditorStore } from '../store';
 import { loadGLB } from './loadGLB';
 import { Scene } from './Scene';
 
 export function Preview3DPanel() {
-  const model3d = useEditorStore((s) => s.model3d);
+  const { model3d, followRegions, setFollowRegions, requestCameraReset } = useEditorStore(
+    useShallow((s) => ({
+      model3d: s.model3d,
+      followRegions: s.followRegions,
+      setFollowRegions: s.setFollowRegions,
+      requestCameraReset: s.requestCameraReset,
+    })),
+  );
   const setModel3D = useEditorStore((s) => s.setModel3D);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
@@ -103,6 +111,27 @@ export function Preview3DPanel() {
         </div>
         {model3d && <div className="zone-label-live">{model3d.filename}</div>}
       </div>
+      {model3d && (
+        <button
+          type="button"
+          className="zone-download"
+          onClick={requestCameraReset}
+          title="Fit camera to model bounds"
+        >
+          ↻ Reset camera
+        </button>
+      )}
+      {model3d && (
+        <button
+          type="button"
+          className={`zone-download zone-download-secondary${followRegions ? ' active' : ''}`}
+          aria-pressed={followRegions}
+          onClick={() => setFollowRegions(!followRegions)}
+          title="Save & restore camera position per region selection"
+        >
+          ◎ Follow regions
+        </button>
+      )}
       <div className="preview3d-canvas-wrap">
         <Canvas camera={{ position: [3, 2, 4], fov: 45 }} dpr={[1, 2]}>
           <Scene />

@@ -575,6 +575,11 @@ input[type='checkbox']:focus-visible {
   opacity: 0.35;
   cursor: not-allowed;
 }
+.zone-download.active {
+  background: var(--c-accent);
+  border-color: var(--c-accent-strong);
+  color: #fff;
+}
 .zone-download-secondary {
   top: 44px;
 }

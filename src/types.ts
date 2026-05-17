@@ -98,6 +98,19 @@ export type Mode =
       startTransform: Transform;
     };
 
+export interface CameraState {
+  position: [number, number, number];
+  target: [number, number, number];
+}
+
+export interface Preview3DConfig {
+  flipY?: boolean;
+  selectedMaterialIds?: string[];
+  meshVisibility?: Record<string, boolean>;
+  followRegions?: boolean;
+  cameraStates?: Record<string, CameraState>;
+}
+
 // All coordinates serialized in UV space [0..1] (relative to imageSize at save time).
 // State holds absolute pixel coords; (de)serialization scales via current image size.
 export interface SerializedConfig {
@@ -111,4 +124,5 @@ export interface SerializedConfig {
   imageSourceFilename: string | null;
   bgFill: BgFill;
   regions: Region[];
+  preview3d?: Preview3DConfig;
 }

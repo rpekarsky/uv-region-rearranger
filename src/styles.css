@@ -109,10 +109,70 @@ label.btn {
 .bg-checkbox {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   cursor: pointer;
   font-size: 12px;
   color: #aaa;
+}
+
+/* Standalone bg-checkbox labels (not inside a .sb-row): full-width block row,
+   label on the left, checkbox pushed to the right via row-reverse + space-between. */
+.sidebar-section > .bg-checkbox {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.sidebar-section > .bg-checkbox:last-child {
+  margin-bottom: 0;
+}
+
+/* Inside a .sb-row: keep checkbox compact, but push it to the right edge
+   and reverse internal order so the label text sits before the checkbox. */
+.sb-row > .bg-checkbox {
+  flex-direction: row-reverse;
+  margin-left: auto;
+}
+
+input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #2a2a2a;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+input[type='checkbox']:hover {
+  border-color: #80a8ff;
+}
+input[type='checkbox']:checked {
+  background: #2d6cdf;
+  border-color: #4080ee;
+}
+input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+input[type='checkbox']:focus-visible {
+  outline: 2px solid #80a8ff;
+  outline-offset: 1px;
 }
 
 /* ---------- workspace ---------- */
@@ -268,8 +328,8 @@ label.btn {
 }
 .zone-header-row {
   display: flex;
-  gap: 6px;
-  align-items: center;
+  gap: 0;
+  align-items: stretch;
 }
 .zone-label-btn {
   pointer-events: auto;
@@ -298,9 +358,8 @@ label.btn {
   pointer-events: auto;
   background: rgba(20, 20, 20, 0.75);
   border: 1px solid #444;
-  color: #ddd;
+  color: #aaa;
   width: 28px;
-  height: 28px;
   padding: 0;
   border-radius: 4px;
   cursor: pointer;
@@ -319,6 +378,18 @@ label.btn {
   background: #b03030;
   border-color: #d04040;
   color: #fff;
+}
+/* When both label-btn and clear sit side-by-side, fuse them into one visual
+   pill: label squares its right corners, clear squares its left corners and
+   drops its left border to avoid a double divider. */
+.zone-header-row:has(.zone-label-clear) .zone-label-btn {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.zone-header-row:has(.zone-label-clear) .zone-label-clear {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left-width: 0;
 }
 .zone-label-live {
   background: rgba(20, 20, 20, 0.6);

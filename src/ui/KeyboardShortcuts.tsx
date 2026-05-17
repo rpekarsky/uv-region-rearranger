@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
+import { toast } from 'sonner';
 import { useEditorStore } from '../store';
 import { cancelDrawing, finishDrawing, startDrawing } from '../canvas/interactions';
 
@@ -64,11 +65,17 @@ export function KeyboardShortcuts() {
   // Undo / redo. `mod` = Ctrl on Win/Linux, Cmd on Mac.
   useHotkeys('mod+z', (e) => {
     e.preventDefault();
-    temporal().undo();
+    const t = temporal();
+    if (t.pastStates.length === 0) return;
+    t.undo();
+    toast('Undo', { duration: 800, className: 'toast-compact' });
   });
   useHotkeys('mod+shift+z, mod+y', (e) => {
     e.preventDefault();
-    temporal().redo();
+    const t = temporal();
+    if (t.futureStates.length === 0) return;
+    t.redo();
+    toast('Redo', { duration: 800, className: 'toast-compact' });
   });
 
   useHotkeys('mod+d', (e) => {

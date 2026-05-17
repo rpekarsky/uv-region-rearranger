@@ -372,7 +372,10 @@ export function onWindowMouseUp(e: MouseEvent): void {
 
   if (isDragMode(store.mode)) {
     store.setMode({ kind: 'editing' });
-    store.endAction();
+    if (dragBegun) {
+      store.endAction();
+      dragBegun = false;
+    }
   }
 
   if (e.button === 0) {
@@ -537,9 +540,7 @@ export function cancelDrawing(): void {
 // ---------- drag operations ----------
 
 function startTranslate(region: Region, mouseStart: Vec2): void {
-  const store = useEditorStore.getState();
-  store.beginAction();
-  store.setMode({
+  useEditorStore.getState().setMode({
     kind: 'dragTranslate',
     regionId: region.id,
     mouseStart,
@@ -553,9 +554,7 @@ function startVertexDrag(
   mouseStart: Vec2,
   vertexIndex: number,
 ): void {
-  const store = useEditorStore.getState();
-  store.beginAction();
-  store.setMode({
+  useEditorStore.getState().setMode({
     kind: 'dragVertex',
     viaSide: side,
     regionId: region.id,
@@ -569,9 +568,7 @@ function startRotate(region: Region, mouseStart: Vec2): void {
   const t = region.transform;
   const pivotScreen: Vec2 = [t.pivot[0] + t.translate[0], t.pivot[1] + t.translate[1]];
   const startAngle = Math.atan2(mouseStart[1] - pivotScreen[1], mouseStart[0] - pivotScreen[0]);
-  const store = useEditorStore.getState();
-  store.beginAction();
-  store.setMode({
+  useEditorStore.getState().setMode({
     kind: 'dragRotate',
     regionId: region.id,
     pivotScreen,
@@ -591,9 +588,7 @@ function snapshotTransform(t: Region['transform']): Region['transform'] {
 }
 
 function startSourceTranslate(region: Region, mouseStart: Vec2): void {
-  const store = useEditorStore.getState();
-  store.beginAction();
-  store.setMode({
+  useEditorStore.getState().setMode({
     kind: 'dragSourceTranslate',
     regionId: region.id,
     mouseStart,
@@ -605,9 +600,7 @@ function startSourceTranslate(region: Region, mouseStart: Vec2): void {
 function startSourceRotate(region: Region, mouseStart: Vec2): void {
   const pivot = centroid(region.polygon);
   const startAngle = Math.atan2(mouseStart[1] - pivot[1], mouseStart[0] - pivot[0]);
-  const store = useEditorStore.getState();
-  store.beginAction();
-  store.setMode({
+  useEditorStore.getState().setMode({
     kind: 'dragSourceRotate',
     regionId: region.id,
     pivot: [pivot[0], pivot[1]],
@@ -625,9 +618,7 @@ function startSourceScale(region: Region, handleKey: HandleKey, pxScale: number)
   const handles = getHandles(region.polygon, IDENTITY_MATRIX, pxScale);
   const C = handles[handleKey];
   const P = handles[getOppositeHandle(handleKey)];
-  const store = useEditorStore.getState();
-  store.beginAction();
-  store.setMode({
+  useEditorStore.getState().setMode({
     kind: 'dragSourceScale',
     regionId: region.id,
     handleKey,
@@ -648,10 +639,12 @@ function startScale(region: Region, handleKey: HandleKey, pxScale: number): void
   const C_pre = handles[handleKey];
   const P_pre = handles[getOppositeHandle(handleKey)];
 
-  // beginAction must precede rebasePivot — that's the first region mutation,
-  // and we want the pre-rebase state as the undo target for the whole scale op.
+  // rebasePivot is the first region mutation for a scale op — push history
+  // BEFORE it so undo lands on the pre-rebase state. (Subsequent drag frames
+  // happen inside the lazy-begun bracket via handleDragMove.)
   store.beginAction();
   store.rebasePivot(region.id, P_pre);
+  dragBegun = true;
   const refreshed = useEditorStore.getState().regions.find((r) => r.id === region.id)!;
   const t = refreshed.transform;
   const pivotScreen: Vec2 = [t.pivot[0] + t.translate[0], t.pivot[1] + t.translate[1]];
@@ -668,10 +661,21 @@ function startScale(region: Region, handleKey: HandleKey, pxScale: number): void
   });
 }
 
+// Deferred-action flag: drags shouldn't push to history until the user
+// actually moves the mouse. A click that resolves to "selectRegion + drag-
+// translate setup" without any movement should not create an undo entry.
+// startScale is the exception — it mutates regions immediately (rebasePivot)
+// so it sets this flag itself.
+let dragBegun = false;
+
 function handleDragMove(p: Vec2, shift: boolean): void {
   const store = useEditorStore.getState();
   const mode = store.mode;
   if (!isDragMode(mode)) return;
+  if (!dragBegun) {
+    store.beginAction();
+    dragBegun = true;
+  }
 
   switch (mode.kind) {
     case 'dragTranslate': {

@@ -1,3 +1,11 @@
+/* Compact sonner toast for short messages (Undo/Redo). Overrides sonner's
+   default ~356px width so a one-word toast doesn't sprawl across the corner. */
+[data-sonner-toast].toast-compact {
+  width: fit-content;
+  min-width: 0;
+  margin-left: auto;
+}
+
 :root {
   /* Surfaces */
   --c-bg: #1a1a1a;

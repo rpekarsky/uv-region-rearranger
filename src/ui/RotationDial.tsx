@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useEditorStore } from '../store';
+import { useLazyAction } from './useLazyAction';
 
 const RAD2DEG = 180 / Math.PI;
 const DEG2RAD = Math.PI / 180;
@@ -25,6 +25,9 @@ export function RotationDial({ value, onChange }: Props) {
   const ref = useRef<SVGSVGElement>(null);
   const [dragging, setDragging] = useState(false);
   const dragStateRef = useRef<{ startAngle: number; startValue: number } | null>(null);
+  // One lazy bracket shared by dial drag AND the numeric input — both feed
+  // into the same parent onChange, so a single bracket per mount is fine.
+  const lazy = useLazyAction();
 
   function getAngle(ev: MouseEvent | React.MouseEvent): number {
     const svg = ref.current;
@@ -37,7 +40,6 @@ export function RotationDial({ value, onChange }: Props) {
 
   const onMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
-    useEditorStore.getState().beginAction();
     dragStateRef.current = { startAngle: getAngle(e), startValue: value };
     setDragging(true);
   };
@@ -53,12 +55,13 @@ export function RotationDial({ value, onChange }: Props) {
         const snap = SNAP_DEG * DEG2RAD;
         next = Math.round(next / snap) * snap;
       }
+      lazy.note();
       onChange(next);
     };
     const onUp = () => {
       setDragging(false);
       dragStateRef.current = null;
-      useEditorStore.getState().endAction();
+      lazy.end();
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
@@ -66,11 +69,14 @@ export function RotationDial({ value, onChange }: Props) {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [dragging, onChange]);
+  }, [dragging, onChange, lazy]);
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const deg = parseFloat(e.target.value);
-    if (!isNaN(deg)) onChange(deg * DEG2RAD);
+    if (!isNaN(deg)) {
+      lazy.note();
+      onChange(deg * DEG2RAD);
+    }
   };
 
   const cx = SIZE / 2;
@@ -130,8 +136,7 @@ export function RotationDial({ value, onChange }: Props) {
         step="any"
         value={Number(displayDeg.toFixed(2))}
         onChange={handleNumberChange}
-        onFocus={() => useEditorStore.getState().beginAction()}
-        onBlur={() => useEditorStore.getState().endAction()}
+        onBlur={lazy.end}
       />
       <span className="rotation-deg">°</span>
     </div>

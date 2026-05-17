@@ -17,8 +17,6 @@ import { applyPoint, buildRegionMatrix, compensateSourceScale } from './geometry
 
 const IDENTITY_VIEWPORT: Viewport = { scale: 1, panX: 0, panY: 0 };
 
-// Debounce helper — collapses bursts of state updates (drag, typing) into
-// a single history entry captured ~300ms after the last change.
 // Cap on retained undo entries — applied to manual pushes via pushHistory()
 // since they bypass zundo's internal limit enforcement.
 const HISTORY_LIMIT = 100;
@@ -646,12 +644,18 @@ export const useEditorStore = create<EditorStore>()(
         regions: state.regions,
         bgFill: state.bgFill,
       }),
+      // Without explicit equality, zundo compares the partialize() WRAPPER
+      // object by identity — that's a new object every state.set() call, so
+      // viewport / zonesRatio / sidebarOpen changes (which don't touch regions
+      // or bgFill) still triggered spurious pushes. Compare the fields by ref
+      // instead — regions/bgFill are only replaced when actually edited.
+      equality: (a, b) => a.regions === b.regions && a.bgFill === b.bgFill,
       limit: HISTORY_LIMIT,
       // Synchronous push: every partialized state change adds one history entry.
       // Continuous actions (drags, property typing) suppress this via
       // beginAction/endAction which pause zundo and push exactly one pre-action
       // snapshot manually. Sync actions (flip, delete, etc.) get their natural
-      // single-set() push automatically through this handler.
+      // single-set() push automatically through the default handler.
     },
   ),
 );

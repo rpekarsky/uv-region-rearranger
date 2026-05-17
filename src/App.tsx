@@ -17,6 +17,8 @@ export function App() {
   const setZonesRatio = useEditorStore((s) => s.setZonesRatio);
   const showRegionNames = useEditorStore((s) => s.showRegionNames);
   const setShowRegionNames = useEditorStore((s) => s.setShowRegionNames);
+  const sidebarOpen = useEditorStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useEditorStore((s) => s.setSidebarOpen);
   const zonesRef = useRef<HTMLDivElement>(null);
   const [vertical, setVertical] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1200px)').matches,
@@ -60,7 +62,14 @@ export function App() {
             <CanvasZone side="right" />
           </div>
         </div>
-        <aside className="sidebar">
+        <button
+          type="button"
+          className={`sidebar-toggle ${sidebarOpen ? 'open' : 'collapsed'}`}
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+          title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+        />
+        <aside className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
           <section className="sidebar-section">
             <h3>Regions</h3>
             <label className="bg-checkbox" style={{ marginBottom: 6 }}>

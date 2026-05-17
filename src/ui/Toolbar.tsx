@@ -7,11 +7,9 @@ import {
   loadImageFromFile,
   loadJSONFromFile,
   parseConfig,
-  serializeRegionPaths,
   serializeState,
 } from '../io/storage';
 import { toast } from 'sonner';
-import { startDrawing } from '../canvas/interactions';
 import { clearStorage } from '../io/persist';
 import { clearImageCache } from '../io/imageCache';
 import { CanvasSizeModal } from './CanvasSizeModal';
@@ -115,13 +113,6 @@ export function Toolbar() {
   const baseName = (originalFilename || 'regions').replace(/\.[^.]+$/, '');
 
   const handleSaveJson = () => downloadJSON(serializeState(), `${baseName}.regions.json`);
-  const handleSavePathsJson = () => {
-    try {
-      downloadJSON(serializeRegionPaths(), `${baseName}.paths.json`);
-    } catch (err) {
-      toast.error((err as Error).message);
-    }
-  };
 
   return (
     <header className="toolbar">
@@ -166,16 +157,6 @@ export function Toolbar() {
         )}
       </div>
 
-      <div className="tb-group">
-        <button
-          className="btn"
-          disabled={!originalImage && !transformedImage}
-          onClick={() => startDrawing()}
-        >
-          + Region (N)
-        </button>
-      </div>
-
       <UndoRedoButtons />
 
       <div className="tb-group">
@@ -191,14 +172,6 @@ export function Toolbar() {
         </button>
         <button className="btn" disabled={regions.length === 0} onClick={handleSaveJson}>
           Save JSON
-        </button>
-        <button
-          className="btn small"
-          disabled={regions.length === 0}
-          onClick={handleSavePathsJson}
-          title="Export region names + polygons (UV coords) as a reference JSON"
-        >
-          Paths JSON
         </button>
         <button
           className="btn small"

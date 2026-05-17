@@ -128,29 +128,6 @@ export function serializeState(): SerializedConfig {
   };
 }
 
-// Paths-only reference export: just `{ name, polygon }` per region in UV coords.
-// No transforms, no masks, no bgFill — informational, not round-trippable.
-export function serializeRegionPaths(): {
-  version: 1;
-  imageSize: [number, number];
-  regions: { name: string; polygon: Vec2[] }[];
-} {
-  const s = useEditorStore.getState();
-  const w = s.originalImage?.naturalWidth ?? s.regionImageSize?.[0];
-  const h = s.originalImage?.naturalHeight ?? s.regionImageSize?.[1];
-  if (!w || !h) {
-    throw new Error('Cannot save: no source size known. Load the original image or a JSON first.');
-  }
-  return {
-    version: 1,
-    imageSize: [w, h],
-    regions: s.regions.map((r) => ({
-      name: r.name,
-      polygon: r.polygon.map((p) => toUV(p, w, h)),
-    })),
-  };
-}
-
 export function parseConfig(data: unknown): SerializedConfig {
   if (!data || typeof data !== 'object') throw new Error('Invalid JSON');
   const cfg = data as Partial<SerializedConfig>;

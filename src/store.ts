@@ -72,6 +72,7 @@ export interface EditorStore {
   regionsOnlyView: boolean;
   loupeAlwaysOn: boolean;
   showRegionNames: boolean;
+  sidebarOpen: boolean;
   // Per-session guard: when false, vertex edits on the right (transformed) zone
   // are blocked — handles still work, vertices are not drawn or hit-tested.
   // Re-locks automatically on every region selection change. Not persisted.
@@ -133,6 +134,7 @@ export interface EditorStore {
   setRegionsOnlyView: (v: boolean) => void;
   setLoupeAlwaysOn: (v: boolean) => void;
   setShowRegionNames: (v: boolean) => void;
+  setSidebarOpen: (v: boolean) => void;
   setRightVertexEditUnlocked: (v: boolean) => void;
   setZonesRatio: (v: number) => void;
   setOutputCanvasSize: (size: [number, number] | null, stretch?: boolean) => void;
@@ -260,6 +262,7 @@ export const useEditorStore = create<EditorStore>()(
       regionsOnlyView: false,
       loupeAlwaysOn: true,
       showRegionNames: false,
+      sidebarOpen: true,
       rightVertexEditUnlocked: false,
       zonesRatio: 0.5,
       regionImageSize: null,
@@ -545,6 +548,7 @@ export const useEditorStore = create<EditorStore>()(
       setRegionsOnlyView: (v) => set({ regionsOnlyView: v }),
       setLoupeAlwaysOn: (v) => set({ loupeAlwaysOn: v }),
       setShowRegionNames: (v) => set({ showRegionNames: v }),
+      setSidebarOpen: (v) => set({ sidebarOpen: v }),
       setRightVertexEditUnlocked: (v) => set({ rightVertexEditUnlocked: v }),
       setZonesRatio: (v) => set({ zonesRatio: Math.max(0.02, Math.min(0.98, v)) }),
       setOutputCanvasSize: (size, stretch = false) =>

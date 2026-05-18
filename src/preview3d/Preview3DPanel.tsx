@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useShallow } from 'zustand/react/shallow';
 import { useEditorStore } from '../store';
 import { loadGLB } from './loadGLB';
+import { loadKN5 } from './loadKN5';
 import { Scene } from './Scene';
 
 export function Preview3DPanel() {
@@ -22,16 +23,19 @@ export function Preview3DPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleFile = async (file: File) => {
-    if (!/\.(glb|gltf)$/i.test(file.name)) {
-      toast.error('Only .glb / .gltf supported (v1)');
+    const isKN5 = /\.kn5$/i.test(file.name);
+    const isGLB = /\.(glb|gltf)$/i.test(file.name);
+    if (!isKN5 && !isGLB) {
+      toast.error('Only .glb / .gltf / .kn5 supported');
       return;
     }
     setLoading(true);
     try {
-      const model = await loadGLB(file, file.name);
+      const model = isKN5 ? await loadKN5(file, file.name) : await loadGLB(file, file.name);
       setModel3D(model, file);
       toast.success(`Loaded ${file.name} (${model.materialNames.length} material slots)`);
     } catch (err) {
+      console.error('[Preview3D] load failed:', err);
       toast.error('Failed to load model: ' + (err as Error).message);
     } finally {
       setLoading(false);
@@ -84,7 +88,7 @@ export function Preview3DPanel() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+        accept=".glb,.gltf,.kn5,model/gltf-binary,model/gltf+json"
         hidden
         onChange={onPickFile}
       />

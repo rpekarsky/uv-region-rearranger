@@ -216,11 +216,13 @@ function placeholderColor(i: number, n: number): Color {
   return new Color().setHSL(hue / 360, 0.25, 0.55);
 }
 
-// Apply hmatrix to a (x,y,z) point in row-vector convention, then flip Z (LHS→RHS).
+// Apply hmatrix to a (x,y,z) point in row-vector convention. AC is LHS DirectX-style,
+// three.js is RHS, but FBXLoader-imported models (the reference) end up unrotated, so
+// we keep raw coordinates and let the user toggle if their specific kn5 differs.
 function transformPoint(h: Mat4, x: number, y: number, z: number, w: number, out: Float32Array, o: number) {
   out[o] = h[0] * x + h[4] * y + h[8] * z + h[12] * w;
   out[o + 1] = h[1] * x + h[5] * y + h[9] * z + h[13] * w;
-  out[o + 2] = -(h[2] * x + h[6] * y + h[10] * z + h[14] * w);
+  out[o + 2] = h[2] * x + h[6] * y + h[10] * z + h[14] * w;
 }
 
 function buildMesh(node: ParsedNode, materialName: string, material: MeshStandardMaterial): Mesh {
@@ -237,20 +239,11 @@ function buildMesh(node: ParsedNode, materialName: string, material: MeshStandar
     transformPoint(node.hmatrix, srcNrm[v * 3], srcNrm[v * 3 + 1], srcNrm[v * 3 + 2], 0, worldNrm, v * 3);
   }
 
-  // Flipping Z above reverses triangle winding; swap to restore CCW front faces.
-  const tris = srcIdx.length / 3;
-  const flipped = new Uint16Array(srcIdx.length);
-  for (let t = 0; t < tris; t++) {
-    flipped[t * 3] = srcIdx[t * 3];
-    flipped[t * 3 + 1] = srcIdx[t * 3 + 2];
-    flipped[t * 3 + 2] = srcIdx[t * 3 + 1];
-  }
-
   const geom = new BufferGeometry();
   geom.setAttribute('position', new BufferAttribute(worldPos, 3));
   geom.setAttribute('normal', new BufferAttribute(worldNrm, 3));
   geom.setAttribute('uv', new BufferAttribute(srcUv, 2));
-  geom.setIndex(new BufferAttribute(flipped, 1));
+  geom.setIndex(new BufferAttribute(srcIdx, 1));
 
   const mesh = new Mesh(geom, material);
   mesh.name = node.name;

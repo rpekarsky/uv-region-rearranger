@@ -9,7 +9,8 @@ import {
 } from './io/persist';
 import { readCachedImage } from './io/imageCache';
 import { readCachedModel } from './preview3d/modelCache';
-import { loadGLB } from './preview3d/loadGLB';
+import { findLoader } from './preview3d/loaderRegistry';
+import './preview3d/registerLoaders';
 import { loadImageFromBlob } from './io/storage';
 import { loadDemo } from './io/demo';
 import { useEditorStore } from './store';
@@ -59,12 +60,15 @@ if (isDemo) {
     }
     const cachedModel = await readCachedModel();
     if (cachedModel) {
-      try {
-        const model = await loadGLB(cachedModel.blob, cachedModel.filename);
-        // Pass undefined for blob — avoid re-writing the same bytes to IDB.
-        useEditorStore.getState().setModel3D(model);
-      } catch (err) {
-        console.warn('[modelCache] failed to decode model:', err);
+      const load = findLoader(cachedModel.filename);
+      if (load) {
+        try {
+          const model = await load(cachedModel.blob, cachedModel.filename);
+          // Pass undefined for blob — avoid re-writing the same bytes to IDB.
+          useEditorStore.getState().setModel3D(model);
+        } catch (err) {
+          console.warn('[modelCache] failed to decode model:', err);
+        }
       }
     }
   })();

@@ -6,6 +6,7 @@ import {
   Mesh,
   MeshStandardMaterial,
 } from 'three';
+import { registerModelLoader } from './loaderRegistry';
 import type { LoadedModel } from './types';
 
 // kn5 = Assetto Corsa binary model. Ported from the community Python converter
@@ -257,7 +258,7 @@ function buildMesh(node: ParsedNode, materialName: string, material: MeshStandar
   return mesh;
 }
 
-export async function loadKN5(blob: Blob, filename: string): Promise<LoadedModel> {
+async function loadKN5(blob: Blob, filename: string): Promise<LoadedModel> {
   const buffer = await blob.arrayBuffer();
   const r = new Reader(buffer);
 
@@ -321,3 +322,5 @@ export async function loadKN5(blob: Blob, filename: string): Promise<LoadedModel
     filename,
   };
 }
+
+registerModelLoader({ extensions: ['kn5'], load: loadKN5 });

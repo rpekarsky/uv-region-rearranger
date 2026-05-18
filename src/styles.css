@@ -430,6 +430,9 @@ input[type='checkbox']:focus-visible {
 .canvas-zone .canvas-backdrop {
   pointer-events: none;
 }
+.canvas-zone .canvas-uv-overlay {
+  pointer-events: none;
+}
 .canvas-zone.dragging {
   outline: 3px dashed var(--c-accent-strong);
   outline-offset: -10px;

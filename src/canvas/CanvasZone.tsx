@@ -26,6 +26,7 @@ import {
   registerCanvas,
 } from './interactions';
 import { Loupe, type LoupePolyline } from './Loupe';
+import { UvOverlay } from '../preview3d/UvOverlay';
 import type { Vec2 } from '../types';
 
 interface Props {
@@ -646,6 +647,15 @@ export function CanvasZone({ side }: Props) {
           onContextMenu={handleContextMenu}
           onWheel={handleWheel}
         />
+        {side === 'left' && (
+          <UvOverlay
+            viewport={params.viewport}
+            containerW={containerSize.width ?? 0}
+            containerH={containerSize.height ?? 0}
+            imageW={params.originalImage?.naturalWidth ?? canonicalSize?.[0] ?? 0}
+            imageH={params.originalImage?.naturalHeight ?? canonicalSize?.[1] ?? 0}
+          />
+        )}
       </div>
       <Loupe
         sourceCanvas={backdropCanvas}

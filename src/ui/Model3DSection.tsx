@@ -14,6 +14,8 @@ export function Model3DSection() {
     setTexture3DFlipY,
     texture3DOutputScale,
     setTexture3DOutputScale,
+    showUvOverlay,
+    setShowUvOverlay,
   } = useEditorStore(
     useShallow((s) => ({
       model3d: s.model3d,
@@ -26,6 +28,8 @@ export function Model3DSection() {
       setTexture3DFlipY: s.setTexture3DFlipY,
       texture3DOutputScale: s.texture3DOutputScale,
       setTexture3DOutputScale: s.setTexture3DOutputScale,
+      showUvOverlay: s.showUvOverlay,
+      setShowUvOverlay: s.setShowUvOverlay,
     })),
   );
 
@@ -55,6 +59,15 @@ export function Model3DSection() {
           onChange={(e) => setTexture3DFlipY(e.target.checked)}
         />
         flip texture Y
+      </label>
+
+      <label className="bg-checkbox">
+        <input
+          type="checkbox"
+          checked={showUvOverlay}
+          onChange={(e) => setShowUvOverlay(e.target.checked)}
+        />
+        show UV wireframe on Original
       </label>
 
       <label className="model3d-quality-row">

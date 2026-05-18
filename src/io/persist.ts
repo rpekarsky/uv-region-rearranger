@@ -72,6 +72,7 @@ interface UIPrefs {
   sidebarOpen: boolean;
   texture3DFlipY: boolean;
   texture3DOutputScale: number;
+  showUvOverlay: boolean;
 }
 
 let uiSaveTimer: number | null = null;
@@ -92,6 +93,7 @@ function scheduleUISave(): void {
       sidebarOpen: s.sidebarOpen,
       texture3DFlipY: s.texture3DFlipY,
       texture3DOutputScale: s.texture3DOutputScale,
+      showUvOverlay: s.showUvOverlay,
     };
     try {
       localStorage.setItem(UI_STORAGE_KEY, JSON.stringify(prefs));
@@ -113,7 +115,8 @@ export function setupUIPersistence(): () => void {
       state.showRegionNames !== prev.showRegionNames ||
       state.sidebarOpen !== prev.sidebarOpen ||
       state.texture3DFlipY !== prev.texture3DFlipY ||
-      state.texture3DOutputScale !== prev.texture3DOutputScale
+      state.texture3DOutputScale !== prev.texture3DOutputScale ||
+      state.showUvOverlay !== prev.showUvOverlay
     ) {
       scheduleUISave();
     }
@@ -136,6 +139,7 @@ export function restoreUIPersistence(): void {
     if (typeof prefs.showRegionNames === 'boolean') store.setShowRegionNames(prefs.showRegionNames);
     if (typeof prefs.sidebarOpen === 'boolean') store.setSidebarOpen(prefs.sidebarOpen);
     if (typeof prefs.texture3DFlipY === 'boolean') store.setTexture3DFlipY(prefs.texture3DFlipY);
+    if (typeof prefs.showUvOverlay === 'boolean') store.setShowUvOverlay(prefs.showUvOverlay);
     if (typeof prefs.texture3DOutputScale === 'number')
       store.setTexture3DOutputScale(prefs.texture3DOutputScale);
   } catch (err) {

@@ -10,6 +10,7 @@ import {
   MeshBasicMaterial,
   SRGBColorSpace,
   LinearFilter,
+  RepeatWrapping,
 } from 'three';
 import { useEditorStore } from '../store';
 import type { LoadedModel } from './types';
@@ -192,6 +193,8 @@ function TextureBinder({ model }: { model: LoadedModel }) {
       tex.colorSpace = SRGBColorSpace;
       tex.minFilter = LinearFilter;
       tex.magFilter = LinearFilter;
+      tex.wrapS = RepeatWrapping;
+      tex.wrapT = RepeatWrapping;
       tex.generateMipmaps = false;
       tex.needsUpdate = true;
       textureRef.current = tex;

@@ -3,7 +3,8 @@ import { Canvas } from '@react-three/fiber';
 import { toast } from 'sonner';
 import { useShallow } from 'zustand/react/shallow';
 import { useEditorStore } from '../store';
-import { loadGLB } from './loadGLB';
+import { findLoader, getSupportedExtensions } from './loaderRegistry';
+import './registerLoaders';
 import { Scene } from './Scene';
 
 export function Preview3DPanel() {
@@ -22,16 +23,21 @@ export function Preview3DPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleFile = async (file: File) => {
-    if (!/\.(glb|gltf)$/i.test(file.name)) {
-      toast.error('Only .glb / .gltf supported (v1)');
+    const load = findLoader(file.name);
+    if (!load) {
+      const supported = getSupportedExtensions()
+        .map((e) => '.' + e)
+        .join(' / ');
+      toast.error(`Only ${supported} supported`);
       return;
     }
     setLoading(true);
     try {
-      const model = await loadGLB(file, file.name);
+      const model = await load(file, file.name);
       setModel3D(model, file);
       toast.success(`Loaded ${file.name} (${model.materialNames.length} material slots)`);
     } catch (err) {
+      console.error('[Preview3D] load failed:', err);
       toast.error('Failed to load model: ' + (err as Error).message);
     } finally {
       setLoading(false);
@@ -84,7 +90,9 @@ export function Preview3DPanel() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+        accept={getSupportedExtensions()
+          .map((e) => '.' + e)
+          .join(',')}
         hidden
         onChange={onPickFile}
       />

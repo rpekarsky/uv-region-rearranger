@@ -88,6 +88,7 @@ export interface EditorStore {
   // per axis (4x less pixel work). Lower = more fluid, softer texture.
   texture3DOutputScale: number;
   showUvOverlay: boolean;
+  uvOverlayOpacity: number;
   // Per-region saved camera state for the 3D preview. Only meaningful when
   // followRegions is on. Persisted in project JSON.
   followRegions: boolean;
@@ -160,6 +161,7 @@ export interface EditorStore {
   setTexture3DFlipY: (v: boolean) => void;
   setTexture3DOutputScale: (v: number) => void;
   setShowUvOverlay: (v: boolean) => void;
+  setUvOverlayOpacity: (v: number) => void;
   setFollowRegions: (v: boolean) => void;
   setCameraState: (regionId: string, state: CameraState) => void;
   requestCameraReset: () => void;
@@ -306,6 +308,7 @@ export const useEditorStore = create<EditorStore>()(
       texture3DFlipY: false,
       texture3DOutputScale: 0.5,
       showUvOverlay: false,
+      uvOverlayOpacity: 0.5,
       followRegions: false,
       cameraStates: {},
       resetCameraTick: 0,
@@ -627,6 +630,7 @@ export const useEditorStore = create<EditorStore>()(
       setTexture3DOutputScale: (v) =>
         set({ texture3DOutputScale: Math.max(0.05, Math.min(1, v)) }),
       setShowUvOverlay: (v) => set({ showUvOverlay: v }),
+      setUvOverlayOpacity: (v) => set({ uvOverlayOpacity: Math.max(0, Math.min(1, v)) }),
       setFollowRegions: (v) => set({ followRegions: v }),
       setCameraState: (regionId, state) =>
         set((s) => ({ cameraStates: { ...s.cameraStates, [regionId]: state } })),

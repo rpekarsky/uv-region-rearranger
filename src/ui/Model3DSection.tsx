@@ -16,6 +16,8 @@ export function Model3DSection() {
     setTexture3DOutputScale,
     showUvOverlay,
     setShowUvOverlay,
+    uvOverlayOpacity,
+    setUvOverlayOpacity,
   } = useEditorStore(
     useShallow((s) => ({
       model3d: s.model3d,
@@ -30,6 +32,8 @@ export function Model3DSection() {
       setTexture3DOutputScale: s.setTexture3DOutputScale,
       showUvOverlay: s.showUvOverlay,
       setShowUvOverlay: s.setShowUvOverlay,
+      uvOverlayOpacity: s.uvOverlayOpacity,
+      setUvOverlayOpacity: s.setUvOverlayOpacity,
     })),
   );
 
@@ -61,14 +65,27 @@ export function Model3DSection() {
         flip texture Y
       </label>
 
-      <label className="bg-checkbox">
-        <input
-          type="checkbox"
-          checked={showUvOverlay}
-          onChange={(e) => setShowUvOverlay(e.target.checked)}
-        />
-        show UV wireframe on Original
-      </label>
+      <div className="model3d-quality-row">
+        <label className="bg-checkbox">
+          <input
+            type="checkbox"
+            checked={showUvOverlay}
+            onChange={(e) => setShowUvOverlay(e.target.checked)}
+          />
+          show UV wireframe
+        </label>
+        <select
+          className="model3d-material-select"
+          value={uvOverlayOpacity}
+          onChange={(e) => setUvOverlayOpacity(parseFloat(e.target.value))}
+          title="UV wireframe opacity"
+        >
+          <option value={0.25}>25%</option>
+          <option value={0.5}>50%</option>
+          <option value={0.75}>75%</option>
+          <option value={1}>100%</option>
+        </select>
+      </div>
 
       <label className="model3d-quality-row">
         <span>Texture quality</span>

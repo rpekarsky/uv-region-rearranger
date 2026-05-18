@@ -16,6 +16,9 @@ export interface LoupePolyline {
 
 interface Props {
   sourceCanvas: HTMLCanvasElement | null;
+  // Optional additional layers composited on top of sourceCanvas (same coord
+  // system — share the canvas-stack's CSS pixel grid). Drawn in array order.
+  overlayCanvases?: (HTMLCanvasElement | null)[];
   cursor: { x: number; y: number } | null;
   containerW: number;
   containerH: number;
@@ -25,6 +28,7 @@ interface Props {
 
 export function Loupe({
   sourceCanvas,
+  overlayCanvases,
   cursor,
   containerW,
   containerH,
@@ -49,6 +53,16 @@ export function Loupe({
       ctx.drawImage(sourceCanvas, sx, sy, SRC_SIZE, SRC_SIZE, 0, 0, LOUPE_SIZE, LOUPE_SIZE);
     } catch {
       // drawImage with negative source coords is a no-op in some browsers; ignore
+    }
+    if (overlayCanvases) {
+      for (const layer of overlayCanvases) {
+        if (!layer || layer.width === 0 || layer.height === 0) continue;
+        try {
+          ctx.drawImage(layer, sx, sy, SRC_SIZE, SRC_SIZE, 0, 0, LOUPE_SIZE, LOUPE_SIZE);
+        } catch {
+          // ignore
+        }
+      }
     }
 
     if (viewport && polylines && polylines.length) {
@@ -99,7 +113,7 @@ export function Loupe({
     ctx.moveTo(c + 0.5, c + gap);
     ctx.lineTo(c + 0.5, LOUPE_SIZE);
     ctx.stroke();
-  }, [sourceCanvas, cursor, viewport, polylines]);
+  }, [sourceCanvas, overlayCanvases, cursor, viewport, polylines]);
 
   if (!cursor) return null;
 

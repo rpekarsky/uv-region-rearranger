@@ -55,6 +55,7 @@ export function CanvasZone({ side }: Props) {
   // rule (rightly) flags if done from a useRef. State+callback-ref triggers
   // a render when the canvas attaches, keeping consumers in sync.
   const [backdropCanvas, setBackdropCanvas] = useState<HTMLCanvasElement | null>(null);
+  const [uvCanvas, setUvCanvas] = useState<HTMLCanvasElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -654,11 +655,13 @@ export function CanvasZone({ side }: Props) {
             containerH={containerSize.height ?? 0}
             imageW={params.originalImage?.naturalWidth ?? canonicalSize?.[0] ?? 0}
             imageH={params.originalImage?.naturalHeight ?? canonicalSize?.[1] ?? 0}
+            onCanvasReady={setUvCanvas}
           />
         )}
       </div>
       <Loupe
         sourceCanvas={backdropCanvas}
+        overlayCanvases={[uvCanvas]}
         cursor={
           cursor &&
           (params.loupeAlwaysOn ||

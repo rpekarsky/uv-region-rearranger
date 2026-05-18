@@ -10,6 +10,9 @@ interface Props {
   containerH: number;
   imageW: number;
   imageH: number;
+  // Lets the parent register the underlying canvas so other consumers
+  // (e.g. Loupe) can composite this layer on top of their own source.
+  onCanvasReady?: (el: HTMLCanvasElement | null) => void;
 }
 
 // Per-material Path2D of triangle outlines. Triangles whose UVs lie outside
@@ -68,20 +71,28 @@ function buildUvPaths(
   return paths;
 }
 
-function materialColorCss(model: LoadedModel, matName: string): string {
+function materialColorCss(model: LoadedModel, matName: string, alpha: number): string {
   const placeholder = model.placeholderMaterials.get(matName);
-  if (!placeholder) return 'rgba(0, 220, 255, 0.45)';
+  if (!placeholder) return `rgba(0, 220, 255, ${alpha})`;
   const { r, g, b } = placeholder.color;
-  return `rgba(${(r * 255) | 0}, ${(g * 255) | 0}, ${(b * 255) | 0}, 0.65)`;
+  return `rgba(${(r * 255) | 0}, ${(g * 255) | 0}, ${(b * 255) | 0}, ${alpha})`;
 }
 
-export function UvOverlay({ viewport, containerW, containerH, imageW, imageH }: Props) {
+export function UvOverlay({
+  viewport,
+  containerW,
+  containerH,
+  imageW,
+  imageH,
+  onCanvasReady,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { model3d, selectedMaterialIds, showUvOverlay } = useEditorStore(
+  const { model3d, selectedMaterialIds, showUvOverlay, uvOverlayOpacity } = useEditorStore(
     useShallow((s) => ({
       model3d: s.model3d,
       selectedMaterialIds: s.selectedMaterialIds,
       showUvOverlay: s.showUvOverlay,
+      uvOverlayOpacity: s.uvOverlayOpacity,
     })),
   );
 
@@ -91,19 +102,22 @@ export function UvOverlay({ viewport, containerW, containerH, imageW, imageH }: 
     return buildUvPaths(model3d, selectedMaterialIds, imageW, imageH);
   }, [showUvOverlay, model3d, selectedMaterialIds, imageW, imageH]);
 
+  // Canvas-pixel coordinates match the sibling backdrop/overlay canvases (no
+  // DPR multiplier) so consumers like Loupe can drawImage from the same source
+  // rect without re-scaling. Trade-off: lines render at native CSS-pixel
+  // resolution rather than retina-crisp — acceptable for a translucent wire.
   useEffect(() => {
     const c = canvasRef.current;
     if (!c) return;
-    const dpr = window.devicePixelRatio || 1;
     const w = Math.max(1, Math.floor(containerW));
     const h = Math.max(1, Math.floor(containerH));
-    if (c.width !== w * dpr || c.height !== h * dpr) {
-      c.width = w * dpr;
-      c.height = h * dpr;
+    if (c.width !== w || c.height !== h) {
+      c.width = w;
+      c.height = h;
     }
     const ctx = c.getContext('2d');
     if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, w, h);
     if (!paths || !model3d) return;
 
@@ -111,10 +125,24 @@ export function UvOverlay({ viewport, containerW, containerH, imageW, imageH }: 
     ctx.scale(viewport.scale, viewport.scale);
     ctx.lineWidth = 0.2 / viewport.scale;
     for (const [matName, path] of paths) {
-      ctx.strokeStyle = materialColorCss(model3d, matName);
+      ctx.strokeStyle = materialColorCss(model3d, matName, uvOverlayOpacity);
       ctx.stroke(path);
     }
-  }, [paths, model3d, viewport.panX, viewport.panY, viewport.scale, containerW, containerH]);
+  }, [
+    paths,
+    model3d,
+    uvOverlayOpacity,
+    viewport.panX,
+    viewport.panY,
+    viewport.scale,
+    containerW,
+    containerH,
+  ]);
+
+  useEffect(() => {
+    onCanvasReady?.(canvasRef.current);
+    return () => onCanvasReady?.(null);
+  }, [onCanvasReady]);
 
   return <canvas ref={canvasRef} className="canvas-uv-overlay" />;
 }
